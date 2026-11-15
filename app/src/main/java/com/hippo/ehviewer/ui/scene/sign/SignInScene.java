@@ -18,6 +18,7 @@ package com.hippo.ehviewer.ui.scene.sign;
 
 import android.content.Context;
 import android.graphics.Paint;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -82,6 +83,8 @@ public final class SignInScene extends SolidScene implements EditText.OnEditorAc
     @Nullable
     private TextView mSignInViaWebView;
     @Nullable
+    private TextView mSignInViaExternalBrowser;
+    @Nullable
     private TextView mSignInViaCookies;
     @Nullable
     private TextView mSkipSigningIn;
@@ -135,10 +138,12 @@ public final class SignInScene extends SolidScene implements EditText.OnEditorAc
         mRegister = ViewUtils.$$(loginForm, R.id.register);
         mSignIn = ViewUtils.$$(loginForm, R.id.sign_in);
         mSignInViaWebView = (TextView) ViewUtils.$$(loginForm, R.id.sign_in_via_webview);
+        mSignInViaExternalBrowser = (TextView) ViewUtils.$$(loginForm, R.id.sign_in_via_external_browser);
         mSignInViaCookies = (TextView) ViewUtils.$$(loginForm, R.id.sign_in_via_cookies);
         mSkipSigningIn = (TextView) ViewUtils.$$(loginForm, R.id.guest_mode);
 
         mSignInViaWebView.setPaintFlags(mSignInViaWebView.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        mSignInViaExternalBrowser.setPaintFlags(mSignInViaExternalBrowser.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
         mSignInViaCookies.setPaintFlags(mSignInViaCookies.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
         mSkipSigningIn.setPaintFlags(mSignInViaCookies.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
 
@@ -147,6 +152,7 @@ public final class SignInScene extends SolidScene implements EditText.OnEditorAc
         mRegister.setOnClickListener(this);
         mSignIn.setOnClickListener(this);
         mSignInViaWebView.setOnClickListener(this);
+        mSignInViaExternalBrowser.setOnClickListener(this);
         mSignInViaCookies.setOnClickListener(this);
         mSkipSigningIn.setOnClickListener(this);
 
@@ -184,6 +190,7 @@ public final class SignInScene extends SolidScene implements EditText.OnEditorAc
         mRegister = null;
         mSignIn = null;
         mSignInViaWebView = null;
+        mSignInViaExternalBrowser = null;
         mSignInViaCookies = null;
         mSkipSigningIn = null;
     }
@@ -242,11 +249,26 @@ public final class SignInScene extends SolidScene implements EditText.OnEditorAc
         }
 
         if (mRegister == v) {
-            UrlOpener.openUrl(activity, EhUrl.URL_REGISTER, false);
+            ExternalBrowserLoginHelper.openUrlInExternalBrowser(activity, EhUrl.URL_REGISTER, null);
         } else if (mSignIn == v) {
             signIn();
         } else if (mSignInViaWebView == v) {
-            startScene(new Announcer(WebViewSignInScene.class).setRequestCode(this, REQUEST_CODE_WEBVIEW));
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                new AlertDialog.Builder(activity)
+                        .setTitle(R.string.legacy_webview_prompt_title)
+                        .setMessage(R.string.legacy_webview_prompt_message)
+                        .setPositiveButton(R.string.legacy_webview_use_external,
+                                (d, which) -> openExternalBrowserSignIn())
+                        .setNeutralButton(R.string.legacy_webview_try_anyway,
+                                (d, which) -> startScene(new Announcer(WebViewSignInScene.class)
+                                        .setRequestCode(this, REQUEST_CODE_WEBVIEW)))
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            } else {
+                startScene(new Announcer(WebViewSignInScene.class).setRequestCode(this, REQUEST_CODE_WEBVIEW));
+            }
+        } else if (mSignInViaExternalBrowser == v) {
+            openExternalBrowserSignIn();
         } else if (mSignInViaCookies == v) {
             startScene(new Announcer(CookieSignInScene.class).setRequestCode(this, REQUEST_CODE_COOKIE));
         } else if (mSkipSigningIn == v) {
@@ -254,6 +276,18 @@ public final class SignInScene extends SolidScene implements EditText.OnEditorAc
             Settings.putGallerySite(EhUrl.SITE_E);
             redirectTo();
         }
+    }
+
+    private void openExternalBrowserSignIn() {
+        Bundle args = new Bundle();
+        args.putBoolean(CookieSignInScene.KEY_OPEN_EXTERNAL_BROWSER, true);
+        startScene(new Announcer(CookieSignInScene.class)
+                .setArgs(args)
+                .setRequestCode(this, REQUEST_CODE_COOKIE));
+    }
+
+    public void onExternalAuthSuccess() {
+        getProfile();
     }
 
     @Override
@@ -326,6 +360,21 @@ public final class SignInScene extends SolidScene implements EditText.OnEditorAc
             data.putString(DISPLAY_NAME, getString(R.string.default_display_name));
             data.putString(AVATAR, "");
             getProfileSuccess(data);
+            return;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            // On Android 4.4–6.0, system WebView is too old for forums Cloudflare/TLS;
+            // fetch profile directly via OkHttpClient (Conscrypt TLS 1.2/1.3 + EhCookieStore).
+            hideSoftInput();
+            showProgress(true);
+
+            EhCallback<SignInScene, ProfileParser.Result> callback = new GetProfileListener(context,
+                    activity.getStageId(), getTag());
+            mRequestId = ((EhApplication) context.getApplicationContext()).putGlobalStuff(callback);
+            EhRequest request = new EhRequest()
+                    .setMethod(EhClient.METHOD_GET_PROFILE)
+                    .setCallback(callback);
+            EhApplication.getEhClient(context).execute(request);
             return;
         }
         startScene(new Announcer(GetProfileScene.class).setRequestCode(this, REQUEST_CODE_PROFILE));

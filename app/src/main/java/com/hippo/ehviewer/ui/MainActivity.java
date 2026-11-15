@@ -77,6 +77,7 @@ import com.hippo.ehviewer.ui.main.UserImageChange;
 import com.hippo.ehviewer.ui.scene.AnalyticsScene;
 import com.hippo.ehviewer.ui.scene.BaseScene;
 import com.hippo.ehviewer.ui.scene.sign.CookieSignInScene;
+import com.hippo.ehviewer.ui.scene.sign.ExternalBrowserLoginHelper;
 import com.hippo.ehviewer.ui.scene.download.DownloadLabelsScene;
 import com.hippo.ehviewer.ui.scene.download.DownloadsScene;
 import com.hippo.ehviewer.ui.scene.gallery.list.FavoritesScene;
@@ -346,8 +347,50 @@ public final class MainActivity extends StageActivity
         return false;
     }
 
+    private boolean handleExternalAuthIntent(@Nullable Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())) {
+            return false;
+        }
+        Uri uri = intent.getData();
+        if (uri == null
+                || !ExternalBrowserLoginHelper.AUTH_SCHEME.equalsIgnoreCase(uri.getScheme())
+                || !ExternalBrowserLoginHelper.AUTH_HOST.equalsIgnoreCase(uri.getHost())) {
+            return false;
+        }
+
+        ExternalBrowserLoginHelper.ParsedCookies parsed =
+                ExternalBrowserLoginHelper.parseCookiesFromUri(uri);
+        if (!parsed.isValid()) {
+            Toast.makeText(this, R.string.no_cookie_in_clipboard, Toast.LENGTH_LONG).show();
+            return true;
+        }
+
+        CookieSignInScene.storeCookiesStatic(this,
+                parsed.ipbMemberId, parsed.ipbPassHash, parsed.igneous);
+        Toast.makeText(this, R.string.external_browser_auth_success, Toast.LENGTH_LONG).show();
+
+        SceneFragment topScene = getTopScene();
+        if (topScene instanceof CookieSignInScene) {
+            ((CookieSignInScene) topScene).onExternalAuthSuccess(parsed);
+        } else if (topScene instanceof SignInScene) {
+            ((SignInScene) topScene).onExternalAuthSuccess();
+        } else {
+            Settings.putNeedSignIn(false);
+            if (0 == getSceneCount()) {
+                Bundle args = new Bundle();
+                args.putString(GalleryListScene.KEY_ACTION, Settings.getLaunchPageGalleryListSceneAction());
+                startScene(processAnnouncer(new Announcer(GalleryListScene.class).setArgs(args)));
+            }
+        }
+        return true;
+    }
+
     @Override
     protected void onUnrecognizedIntent(@Nullable Intent intent) {
+        if (handleExternalAuthIntent(intent)) {
+            return;
+        }
+
         Class<?> clazz = getTopSceneClass();
         if (clazz != null && SolidScene.class.isAssignableFrom(clazz)) {
             // TODO the intent lost

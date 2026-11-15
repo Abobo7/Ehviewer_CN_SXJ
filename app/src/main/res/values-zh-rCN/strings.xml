@@ -1006,4 +1006,21 @@
     <string name="import_album_already_imported">相册已导入</string>
     <string name="import_album_success">成功导入 %d 张图片</string>
 
+    <!-- External Browser Login (KitKat / legacy WebView fallback) -->
+    <string name="sign_in_via_external_browser">通过外部浏览器登录</string>
+    <string name="open_external_browser_for_cookie">通过外部浏览器登录 / 获取 Cookie</string>
+    <string name="legacy_webview_prompt_title">系统 WebView 内核过旧</string>
+    <string name="legacy_webview_prompt_message">当前系统内置 WebView 内核版本较低（如 Android 4.4 Chromium 30/33），通常无法通过 E 站网页端人机验证或加载现代脚本。\n\n推荐使用平板上已安装的现代外部浏览器（如 Kiwi Browser、UC 浏览器）完成登录并回传凭证。</string>
+    <string name="legacy_webview_use_external">使用外部浏览器</string>
+    <string name="legacy_webview_try_anyway">仍尝试内置 WebView</string>
+    <string name="external_browser_choose_title">选择外部现代浏览器</string>
+    <string name="external_browser_login_guide">1. 点击「打开论坛登录」调用现代浏览器（推荐 Kiwi / UC）完成账号登录；如需访问里站，登录论坛后再点「打开里站」生成 igneous。\n\n2. 将登录态带回 EhViewer（任选其一）：\n• 一键回跳：回跳脚本已自动复制到剪贴板。在 Kiwi 开发者工具 Console 粘贴执行，或在地址栏粘贴（若前缀被吞请补回 javascript:）回车，即可直接跳回 EhViewer 自动登录。\n• 剪贴板导入：在浏览器复制 document.cookie 或通过 Cookie 扩展导出 JSON，切回本页即可自动识别填入。</string>
+    <string name="external_browser_open_forums">打开论坛登录</string>
+    <string name="external_browser_open_ex">打开里站 (igneous)</string>
+    <string name="external_browser_copy_script">复制回跳脚本</string>
+    <string name="external_browser_script_copied">已复制外部浏览器一键回跳脚本</string>
+    <string name="external_browser_launched_tip">在浏览器完成登录后，可执行剪贴板中的回跳脚本，或复制 Cookie 切回应用</string>
+    <string name="external_browser_cookies_autofilled">已从剪贴板识别到登录 Cookie，点击确定即可登录</string>
+    <string name="external_browser_auth_success">已从外部浏览器导入登录状态！</string>
+
 </resources>

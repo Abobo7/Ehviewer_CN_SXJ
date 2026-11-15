@@ -1095,4 +1095,21 @@
     <string name="import_album_success">Imported %d images successfully</string>
     <!-- TagSelectActivity -->
     <string name="tag_search_entrance">Tag Selector</string>
+
+    <!-- External Browser Login (KitKat / legacy WebView fallback) -->
+    <string name="sign_in_via_external_browser">Sign in via external browser</string>
+    <string name="open_external_browser_for_cookie">Sign in / get cookies via external browser</string>
+    <string name="legacy_webview_prompt_title">Outdated System WebView</string>
+    <string name="legacy_webview_prompt_message">The built-in Android 4.4–6.0 WebView engine is too old for modern Cloudflare / verification scripts on E-Hentai. Using an external modern browser (such as Kiwi Browser or UC Browser) is recommended.</string>
+    <string name="legacy_webview_use_external">Use external browser</string>
+    <string name="legacy_webview_try_anyway">Try built-in WebView</string>
+    <string name="external_browser_choose_title">Choose external browser</string>
+    <string name="external_browser_login_guide">1. Tap \"Open Forums Login\" to sign in inside a modern external browser (e.g. Kiwi / UC). If you need ExHentai access, also open \"Open ExHentai\" once after signing in.\n\n2. To send cookies back to EhViewer:\n• One-tap callback: Paste the auto-copied javascript: callback script in the browser address bar (re-type \"javascript:\" if stripped) or Developer Tools Console to jump straight back into EhViewer.\n• Or Clipboard import: Copy document.cookie or Cookie-Editor JSON in the browser and switch back to EhViewer — fields will auto-fill.</string>
+    <string name="external_browser_open_forums">Open Forums Login</string>
+    <string name="external_browser_open_ex">Open ExHentai (igneous)</string>
+    <string name="external_browser_copy_script">Copy Callback Script</string>
+    <string name="external_browser_script_copied">Callback script copied to clipboard</string>
+    <string name="external_browser_launched_tip">Complete login in browser, then run the copied callback script or copy cookies back to EhViewer</string>
+    <string name="external_browser_cookies_autofilled">Cookies detected from clipboard — tap OK to sign in</string>
+    <string name="external_browser_auth_success">Signed in from external browser!</string>
 </resources>

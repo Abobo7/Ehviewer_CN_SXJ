@@ -57,6 +57,7 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
         View.OnClickListener {
 
     private static final String TAG = "CookieSignInScene";
+    public static final String KEY_OPEN_EXTERNAL_BROWSER = "open_external_browser";
 
     /*---------------
      View life cycle
@@ -77,6 +78,10 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
     private View mOk;
     @Nullable
     private Button importInClipboard;
+    @Nullable
+    private Button mOpenExternalBrowser;
+
+    private boolean mWaitingExternalBrowser;
 
     @Override
     public boolean needShowLeftDrawer() {
@@ -99,11 +104,13 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
         AssertUtils.assertNotNull(mIgneous);
         mOk = ViewUtils.$$(view, R.id.ok);
         importInClipboard = (Button) ViewUtils.$$(view, R.id.import_in_clipboard);
+        mOpenExternalBrowser = (Button) ViewUtils.$$(view, R.id.open_external_browser);
 
         mIpbPassHash.setOnEditorActionListener(this);
 
         mOk.setOnClickListener(this);
         importInClipboard.setOnClickListener(this);
+        mOpenExternalBrowser.setOnClickListener(this);
 
         // Try to get old version cookie info
         Context context = getEHContext();
@@ -137,7 +144,39 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        showSoftInput(mIpbMemberId);
+        Bundle args = getArguments();
+        boolean autoOpenExternal = savedInstanceState == null
+                && args != null
+                && args.getBoolean(KEY_OPEN_EXTERNAL_BROWSER, false);
+        if (autoOpenExternal) {
+            args.putBoolean(KEY_OPEN_EXTERNAL_BROWSER, false);
+            Context context = getEHContext();
+            if (context != null) {
+                ExternalBrowserLoginHelper.showExternalBrowserGuideDialog(context,
+                        () -> mWaitingExternalBrowser = true);
+            }
+        } else {
+            showSoftInput(mIpbMemberId);
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mWaitingExternalBrowser || (mIpbMemberId != null && TextUtils.isEmpty(mIpbMemberId.getText()))) {
+            Context context = getEHContext();
+            if (context != null) {
+                ExternalBrowserLoginHelper.ParsedCookies parsed =
+                        ExternalBrowserLoginHelper.inspectClipboardCookies(context);
+                if (parsed != null && parsed.isValid()) {
+                    applyParsedCookies(parsed);
+                    if (mWaitingExternalBrowser) {
+                        mWaitingExternalBrowser = false;
+                        showTip(R.string.external_browser_cookies_autofilled, LENGTH_LONG);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -150,6 +189,9 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
         mIpbMemberId = null;
         mIpbPassHash = null;
         mIgneous = null;
+        mOk = null;
+        importInClipboard = null;
+        mOpenExternalBrowser = null;
     }
 
     @Override
@@ -158,6 +200,12 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
             enter();
         } else if (importInClipboard == v) {
             importCookie();
+        } else if (mOpenExternalBrowser == v) {
+            Context context = getEHContext();
+            if (context != null) {
+                ExternalBrowserLoginHelper.showExternalBrowserGuideDialog(context,
+                        () -> mWaitingExternalBrowser = true);
+            }
         }
     }
 
@@ -237,38 +285,55 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
         }
     }
 
-    private void importCookie() {
-        try{
-            ClipboardManager clipboardManager = (ClipboardManager) EhApplication.getInstance().getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData data = clipboardManager.getPrimaryClip();
-            ClipData.Item item = data.getItemAt(0);
-            String cookieData = String.valueOf(item.getText());
-            String[] cookieRows = cookieData.split("\n");
-            if (cookieRows.length < 2) {
-                Toast.makeText(getContext(), R.string.no_cookie_in_clipboard, Toast.LENGTH_LONG).show();
-                return;
-            }
-            for (String cookieRow : cookieRows) {
-                handleCookie(cookieRow);
-            }
-        }catch (NullPointerException e){
-            Toast.makeText(getContext(), R.string.cookie_in_clipboard_incorrect, Toast.LENGTH_LONG).show();
+    private void applyParsedCookies(ExternalBrowserLoginHelper.ParsedCookies parsed) {
+        if (mIpbMemberId != null && !TextUtils.isEmpty(parsed.ipbMemberId)) {
+            mIpbMemberId.setText(parsed.ipbMemberId);
+        }
+        if (mIpbPassHash != null && !TextUtils.isEmpty(parsed.ipbPassHash)) {
+            mIpbPassHash.setText(parsed.ipbPassHash);
+        }
+        if (mIgneous != null && !TextUtils.isEmpty(parsed.igneous)) {
+            mIgneous.setText(parsed.igneous);
         }
     }
 
-    public void handleCookie(String cookieRow) {
-        String cleanRow = cookieRow.replace(" ", "");
-        String[] cookieData = cleanRow.split(":");
-        if (cookieData.length != 2) {
-            Toast.makeText(getContext(), R.string.no_cookie_in_clipboard, Toast.LENGTH_LONG).show();
-            return;
-        }
-        if (cookieData[0].equals(EhCookieStore.KEY_IPD_PASS_HASH) && mIpbPassHash != null) {
-            mIpbPassHash.setText(cookieData[1]);
-        } else if (cookieData[0].equals(EhCookieStore.KEY_IPD_MEMBER_ID) && mIpbMemberId != null) {
-            mIpbMemberId.setText(cookieData[1]);
-        } else if (cookieData[0].equals(EhCookieStore.KEY_IGNEOUS) && mIgneous != null) {
-            mIgneous.setText(cookieData[1]);
+    public void onExternalAuthSuccess(ExternalBrowserLoginHelper.ParsedCookies parsed) {
+        mWaitingExternalBrowser = false;
+        applyParsedCookies(parsed);
+        setResult(RESULT_OK, null);
+        finish();
+    }
+
+    private void importCookie() {
+        try {
+            Context context = getEHContext();
+            if (context == null) {
+                return;
+            }
+            ClipboardManager clipboardManager = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboardManager == null || !clipboardManager.hasPrimaryClip()) {
+                Toast.makeText(context, R.string.no_cookie_in_clipboard, Toast.LENGTH_LONG).show();
+                return;
+            }
+            ClipData data = clipboardManager.getPrimaryClip();
+            if (data == null || data.getItemCount() == 0) {
+                Toast.makeText(context, R.string.no_cookie_in_clipboard, Toast.LENGTH_LONG).show();
+                return;
+            }
+            CharSequence raw = data.getItemAt(0).coerceToText(context);
+            ExternalBrowserLoginHelper.ParsedCookies parsed =
+                    ExternalBrowserLoginHelper.parseCookies(raw != null ? raw.toString() : null);
+            if (!parsed.isValid()) {
+                Toast.makeText(context, R.string.no_cookie_in_clipboard, Toast.LENGTH_LONG).show();
+                return;
+            }
+            applyParsedCookies(parsed);
+            showTip(R.string.external_browser_cookies_autofilled, LENGTH_SHORT);
+        } catch (Throwable e) {
+            Context context = getContext();
+            if (context != null) {
+                Toast.makeText(context, R.string.cookie_in_clipboard_incorrect, Toast.LENGTH_LONG).show();
+            }
         }
     }
 
@@ -282,6 +347,13 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
         if (null == context) {
             return;
         }
+        storeCookiesStatic(context, id, hash, igneous);
+    }
+
+    public static void storeCookiesStatic(Context context, String id, String hash, @Nullable String igneous) {
+        if (null == context) {
+            return;
+        }
 
         EhUtils.signOut(context);
 
@@ -292,7 +364,7 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
         store.addCookie(newCookie(EhCookieStore.KEY_IPD_PASS_HASH, hash, EhUrl.DOMAIN_E));
         store.addCookie(newCookie(EhCookieStore.KEY_IPD_PASS_HASH, hash, EhUrl.DOMAIN_EX));
         store.addCookie(newCookie(EhCookieStore.KEY_IPD_PASS_HASH, hash, EhUrl.DOMAIN_FORUMS));
-        if (!igneous.isEmpty()) {
+        if (igneous != null && !igneous.isEmpty()) {
             store.addCookie(newCookie(EhCookieStore.KEY_IGNEOUS, igneous, EhUrl.DOMAIN_E));
             store.addCookie(newCookie(EhCookieStore.KEY_IGNEOUS, igneous, EhUrl.DOMAIN_EX));
             store.addCookie(newCookie(EhCookieStore.KEY_IGNEOUS, igneous, EhUrl.DOMAIN_FORUMS));
@@ -309,7 +381,7 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
                 String cookieString = formatCookieForWebView(cookie);
                 cookieManager.setCookie(EhUrl.DOMAIN_FORUMS, cookieString);
             }
-            com.hippo.util.CookieManagerCompat.flush(getEHContext(), cookieManager);
+            com.hippo.util.CookieManagerCompat.flush(context, cookieManager);
         } catch (Throwable t) {
             Log.e(TAG, "CookieManager/WebView unavailable, OkHttp cookies still stored", t);
         }

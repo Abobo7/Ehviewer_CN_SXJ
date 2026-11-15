@@ -1072,7 +1072,12 @@ public class EhEngine {
             headers = response.headers();
             assert response.body() != null;
             body = response.body().string();
-            return getProfileInternal(task, okHttpClient, ForumsParser.parse(body), url);
+            try {
+                return getProfileInternal(task, okHttpClient, ForumsParser.parse(body), url);
+            } catch (Throwable inner) {
+                ExceptionUtils.throwIfFatal(inner);
+                return ProfileParser.parseNew(body);
+            }
         } catch (Throwable e) {
             ExceptionUtils.throwIfFatal(e);
             throwException(call, code, headers, body, e);

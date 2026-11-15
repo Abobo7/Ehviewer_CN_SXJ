@@ -106,6 +106,16 @@
                 <data android:host="g.e-hentai.org" />
                 <data android:host="lofi.e-hentai.org" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="auth"
+                    android:scheme="ehviewer" />
+            </intent-filter>
             <intent-filter android:label="@string/keyword_search">
                 <action android:name="android.intent.action.SEND" />
 
