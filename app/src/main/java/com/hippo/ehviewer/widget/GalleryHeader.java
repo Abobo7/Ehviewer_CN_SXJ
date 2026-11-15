@@ -28,9 +28,12 @@ import androidx.annotation.RequiresApi;
 import com.hippo.ehviewer.R;
 import com.hippo.lib.yorozuya.ObjectUtils;
 
+import java.util.Collections;
+import java.util.List;
+
 public class GalleryHeader extends ViewGroup {
 
-  private DisplayCutout displayCutout;
+  private Object displayCutout;
 
   private View battery;
   private View progress;
@@ -49,8 +52,7 @@ public class GalleryHeader extends ViewGroup {
     super(context, attrs);
   }
 
-  @RequiresApi(api = Build.VERSION_CODES.P)
-  public void setDisplayCutout(@Nullable DisplayCutout displayCutout) {
+  public void setDisplayCutout(@Nullable Object displayCutout) {
     if (!ObjectUtils.equal(this.displayCutout, displayCutout)) {
       this.displayCutout = displayCutout;
       requestLayout();
@@ -86,7 +88,7 @@ public class GalleryHeader extends ViewGroup {
     measureChild(rect, view, width, 0, 0);
     rect.offset(lastX, lastY);
 
-    for (Rect notch : displayCutout.getBoundingRects()) {
+    for (Rect notch : Api28CutoutRects.getBoundingRects(displayCutout)) {
       if (Rect.intersects(notch, rect)) {
         offset = Math.max(offset, notch.bottom - lastY);
       }
@@ -108,7 +110,7 @@ public class GalleryHeader extends ViewGroup {
     measureChild(rect, view, width, 0, 0);
     rect.offset(lastX, lastY);
 
-    for (Rect notch : displayCutout.getBoundingRects()) {
+    for (Rect notch : Api28CutoutRects.getBoundingRects(displayCutout)) {
       if (Rect.intersects(notch, rect)) {
         offset = Math.max(offset, notch.right - lastX);
       }
@@ -124,13 +126,23 @@ public class GalleryHeader extends ViewGroup {
     measureChild(rect, view, width, 0, 0);
     rect.offset(lastX, lastY);
 
-    for (Rect notch : displayCutout.getBoundingRects()) {
+    for (Rect notch : Api28CutoutRects.getBoundingRects(displayCutout)) {
       if (Rect.intersects(notch, rect)) {
         offset = Math.max(offset, lastX + width - notch.left);
       }
     }
 
     return offset;
+  }
+
+  @RequiresApi(api = Build.VERSION_CODES.P)
+  private static final class Api28CutoutRects {
+    static List<Rect> getBoundingRects(Object cutoutObj) {
+      if (cutoutObj instanceof DisplayCutout) {
+        return ((DisplayCutout) cutoutObj).getBoundingRects();
+      }
+      return Collections.emptyList();
+    }
   }
 
   @Override
@@ -165,10 +177,14 @@ public class GalleryHeader extends ViewGroup {
     } else {
       measureChild(batteryRect, battery, width, 0, 0);
       measureChild(progressRect, progress, width, 0, 0);
-      measureChild(clockRect, clock, width, 0, 0);
+      measureChild(clockRect, clock, width, paddingLeftZero(), 0);
     }
 
     setMeasuredDimension(width, height);
+  }
+
+  private static int paddingLeftZero() {
+    return 0;
   }
 
   @Override

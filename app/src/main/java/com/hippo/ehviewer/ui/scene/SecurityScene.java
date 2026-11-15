@@ -30,6 +30,7 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import com.hippo.ehviewer.R;
 import com.hippo.ehviewer.Settings;
 import com.hippo.ehviewer.ui.MainActivity;
@@ -59,7 +60,7 @@ public class SecurityScene extends SolidScene implements
     private Sensor mAccelerometer;
     private ShakeDetector mShakeDetector;
     @Nullable
-    private FingerprintManager mFingerprintManager;
+    private Object mFingerprintManager;
 
     private CancellationSignal mFingerprintCancellationSignal;
 
@@ -85,7 +86,7 @@ public class SecurityScene extends SolidScene implements
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            mFingerprintManager = context.getSystemService(FingerprintManager.class);
+            mFingerprintManager = Api23FingerprintHelper.getManager(context);
         }
 
         if (null == savedInstanceState) {
@@ -112,38 +113,22 @@ public class SecurityScene extends SolidScene implements
             mSensorManager.registerListener(mShakeDetector, mAccelerometer, SensorManager.SENSOR_DELAY_UI);
         }
 
-        if (isFingerprintAuthAvailable()) {
+        if (isFingerprintAuthAvailable() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             mFingerprintCancellationSignal = new CancellationSignal();
-            // The line below prevents the false positive inspection from Android Studio
-            // noinspection ResourceType
-            mFingerprintManager.authenticate(null, mFingerprintCancellationSignal, 0,
-                    new FingerprintManager.AuthenticationCallback() {
-                        @Override
-                        public void onAuthenticationError(int errMsgId, CharSequence errString) {
-                            fingerprintError(true);
-                        }
-
-                        @Override
-                        public void onAuthenticationFailed() {
-                            fingerprintError(false);
-                        }
-
-                        @Override
-                        public void onAuthenticationSucceeded(
-                                FingerprintManager.AuthenticationResult result) {
-                            mFingerprintIcon.setImageResource(R.drawable.fingerprint_success);
-                            mFingerprintIcon.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (getEHContext() != null && isAdded()) {
-                                        startSceneForCheckStep(CHECK_STEP_SECURITY, getArguments());
-                                        finish();
-                                    }
-                                }
-                            }, SUCCESS_DELAY_MILLIS);
-
-                        }
-                    }, null);
+            Api23FingerprintHelper.authenticate(
+                    mFingerprintManager,
+                    mFingerprintCancellationSignal,
+                    () -> {
+                        mFingerprintIcon.setImageResource(R.drawable.fingerprint_success);
+                        mFingerprintIcon.postDelayed(() -> {
+                            if (getEHContext() != null && isAdded()) {
+                                startSceneForCheckStep(CHECK_STEP_SECURITY, getArguments());
+                                finish();
+                            }
+                        }, SUCCESS_DELAY_MILLIS);
+                    },
+                    this::fingerprintError
+            );
         }
     }
 
@@ -239,12 +224,52 @@ public class SecurityScene extends SolidScene implements
     }
 
     private boolean isFingerprintAuthAvailable() {
-        // The line below prevents the false positive inspection from Android Studio
-        // noinspection ResourceType
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && Settings.getEnableFingerprint()
                 && mFingerprintManager != null
-                && SetSecurityActivity.hasEnrolledFingerprints(mFingerprintManager);
+                && Api23FingerprintHelper.hasEnrolledFingerprints(mFingerprintManager);
+    }
+
+    private interface ErrorCallback {
+        void onError(boolean unrecoverable);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    private static final class Api23FingerprintHelper {
+        static Object getManager(Context context) {
+            return context.getSystemService(FingerprintManager.class);
+        }
+
+        static boolean hasEnrolledFingerprints(Object managerObj) {
+            if (!(managerObj instanceof FingerprintManager)) {
+                return false;
+            }
+            return SetSecurityActivity.hasEnrolledFingerprintsObj(managerObj);
+        }
+
+        @SuppressWarnings("MissingPermission")
+        static void authenticate(Object managerObj, CancellationSignal signal, Runnable onSuccess, ErrorCallback onError) {
+            if (!(managerObj instanceof FingerprintManager)) {
+                return;
+            }
+            ((FingerprintManager) managerObj).authenticate(null, signal, 0,
+                    new FingerprintManager.AuthenticationCallback() {
+                        @Override
+                        public void onAuthenticationError(int errMsgId, CharSequence errString) {
+                            onError.onError(true);
+                        }
+
+                        @Override
+                        public void onAuthenticationFailed() {
+                            onError.onError(false);
+                        }
+
+                        @Override
+                        public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+                            onSuccess.run();
+                        }
+                    }, null);
+        }
     }
 
     private Runnable mResetFingerprintRunnable = new Runnable() {

@@ -57,9 +57,7 @@ public class MyTagsActivity extends ToolbarActivity {
         try {
             // http://stackoverflow.com/questions/32284642/how-to-handle-an-uncatched-exception
             CookieManager cookieManager = CookieManager.getInstance();
-            cookieManager.flush();
-            cookieManager.removeAllCookies(null);
-            cookieManager.removeSessionCookies(null);
+            com.hippo.util.CookieManagerCompat.clearAllCookies(this, cookieManager);
 
             // Copy cookies from okhttp cookie store to CookieManager
             url = EhUrl.getMyTagsUrl();

@@ -25,6 +25,7 @@ import android.util.AttributeSet;
 import android.view.ViewOutlineProvider;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import com.hippo.ehviewer.R;
 import com.hippo.lib.yorozuya.LayoutUtils;
 
@@ -51,10 +52,17 @@ public class ShadowLinearLayout extends LinearLayout {
     private void init(Context context) {
         // TODO not only 2dp
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            setOutlineProvider(ViewOutlineProvider.BOUNDS);
-            setElevation(LayoutUtils.dp2pix(context, 2));
+            Api21OutlineHelper.apply(this, LayoutUtils.dp2pix(context, 2));
         } else {
             setShadow((NinePatchDrawable) context.getResources().getDrawable(R.drawable.shadow_2dp)); // TODO draktheme
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private static final class Api21OutlineHelper {
+        static void apply(ShadowLinearLayout view, float elevation) {
+            view.setOutlineProvider(ViewOutlineProvider.BOUNDS);
+            view.setElevation(elevation);
         }
     }
 

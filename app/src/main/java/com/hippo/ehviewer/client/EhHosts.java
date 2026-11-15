@@ -21,12 +21,14 @@ package com.hippo.ehviewer.client;
  */
 
 import android.content.Context;
+import android.os.Build;
 
 import androidx.annotation.NonNull;
 
 import com.hippo.ehviewer.EhApplication;
 import com.hippo.ehviewer.Hosts;
 import com.hippo.ehviewer.Settings;
+import com.hippo.network.KitKatTlsHelper;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -124,8 +126,13 @@ public class EhHosts implements Dns {
 
     public EhHosts(Context context) {
         hosts = EhApplication.getHosts(context);
+        OkHttpClient.Builder dohClientBuilder = new OkHttpClient.Builder()
+                .cache(EhApplication.getOkHttpCache(context));
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            KitKatTlsHelper.applyToOkHttpBuilder(dohClientBuilder, false);
+        }
         DnsOverHttps.Builder builder = new DnsOverHttps.Builder()
-                .client(new OkHttpClient.Builder().cache(EhApplication.getOkHttpCache(context)).build())
+                .client(dohClientBuilder.build())
                 .url(HttpUrl.get("https://77.88.8.1/dns-query"));
         dnsOverHttps = builder.post(true).build();
     }

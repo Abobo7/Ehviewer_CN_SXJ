@@ -32,20 +32,6 @@
 
 #define WEBP_DEFAULT_FRAME_DELAY 100
 
-static void free_animation_buffers(WEBP* webp, unsigned int decoded) {
-  unsigned int i;
-  if (webp->frames != NULL) {
-    for (i = 0; i < decoded; i++) {
-      free(webp->frames[i]);
-      webp->frames[i] = NULL;
-    }
-    free(webp->frames);
-    webp->frames = NULL;
-  }
-  free(webp->delays);
-  webp->delays = NULL;
-}
-
 static bool decode_static_image(WEBP* webp,
                                 const uint8_t* data,
                                 size_t length,
@@ -83,18 +69,19 @@ static bool decode_static_image(WEBP* webp,
   webp->animated = false;
   webp->frame_count = 1;
   webp->current_frame = 0;
+  webp->current_delay = 0;
   return true;
 }
 
-static bool decode_animation(WEBP* webp, const uint8_t* data, size_t length) {
+static bool init_streaming_animation(WEBP* webp, uint8_t* data, size_t length) {
   WebPAnimDecoderOptions options;
   WebPAnimDecoder* decoder = NULL;
   WebPAnimInfo info;
   WebPData webp_data;
-  unsigned int decoded = 0;
   size_t frame_bytes;
   uint8_t* frame = NULL;
   int timestamp = 0;
+
   if (!WebPAnimDecoderOptionsInit(&options)) {
     LOGE(MSG("Failed to init WebPAnimDecoderOptions"));
     return false;
@@ -117,78 +104,54 @@ static bool decode_animation(WEBP* webp, const uint8_t* data, size_t length) {
     WebPAnimDecoderDelete(decoder);
     return false;
   }
-  {
-    size_t pixel_count = (size_t) info.canvas_width * (size_t) info.canvas_height;
-    if (pixel_count / info.canvas_width != info.canvas_height || pixel_count > SIZE_MAX / 4u) {
-      LOGE(MSG("WebP animation dimension overflow %u x %u"),
-           info.canvas_width, info.canvas_height);
-      WebPAnimDecoderDelete(decoder);
-      return false;
-    }
-    frame_bytes = pixel_count * 4u;
+
+  size_t pixel_count = (size_t) info.canvas_width * (size_t) info.canvas_height;
+  if (pixel_count / info.canvas_width != info.canvas_height || pixel_count > SIZE_MAX / 4u) {
+    LOGE(MSG("WebP animation dimension overflow %u x %u"),
+         info.canvas_width, info.canvas_height);
+    WebPAnimDecoderDelete(decoder);
+    return false;
   }
-  webp->frames = (unsigned char**) calloc(info.frame_count, sizeof(unsigned char*));
-  webp->delays = (int*) calloc(info.frame_count, sizeof(int));
-  if (webp->frames == NULL || webp->delays == NULL) {
+  frame_bytes = pixel_count * 4u;
+
+  webp->buffer = (unsigned char*) malloc(frame_bytes);
+  if (webp->buffer == NULL) {
     WTF_OM;
     WebPAnimDecoderDelete(decoder);
     return false;
   }
-  while (decoded < info.frame_count && WebPAnimDecoderGetNext(decoder, &frame, &timestamp)) {
-    webp->frames[decoded] = (unsigned char*) malloc(frame_bytes);
-    if (webp->frames[decoded] == NULL) {
-      WTF_OM;
-      WebPAnimDecoderDelete(decoder);
-      free_animation_buffers(webp, decoded);
-      return false;
-    }
-    memcpy(webp->frames[decoded], frame, frame_bytes);
-    decoded++;
-  }
-  if (decoded == 0) {
-    LOGE(MSG("No WebP animation frames decoded"));
+
+  if (!WebPAnimDecoderGetNext(decoder, &frame, &timestamp) || frame == NULL) {
+    LOGE(MSG("Failed to decode first WebP animation frame"));
+    free(webp->buffer);
+    webp->buffer = NULL;
     WebPAnimDecoderDelete(decoder);
-    free_animation_buffers(webp, 0);
     return false;
   }
-  {
-    const WebPDemuxer* demux = WebPAnimDecoderGetDemuxer(decoder);
-    if (demux != NULL) {
-      WebPIterator iter;
-      if (WebPDemuxGetFrame(demux, 1, &iter)) {
-        do {
-          int index = iter.frame_num - 1;
-          if (index >= 0 && (unsigned int) index < decoded) {
-            webp->delays[index] = iter.duration;
-          }
-        } while (WebPDemuxNextFrame(&iter));
-        WebPDemuxReleaseIterator(&iter);
-      }
-    }
-  }
-  for (unsigned int i = 0; i < decoded; i++) {
-    if (webp->delays[i] <= 0) {
-      webp->delays[i] = WEBP_DEFAULT_FRAME_DELAY;
-    }
-  }
-  WebPAnimDecoderDelete(decoder);
+
+  memcpy(webp->buffer, frame, frame_bytes);
   webp->width = info.canvas_width;
   webp->height = info.canvas_height;
-  webp->animated = true;
-  webp->frame_count = decoded;
+  webp->animated = info.frame_count > 1;
+  webp->frame_count = info.frame_count;
   webp->current_frame = 0;
+  webp->prev_timestamp = timestamp;
+  webp->current_delay = timestamp > 0 ? timestamp : WEBP_DEFAULT_FRAME_DELAY;
+  webp->anim_data = data;
+  webp->anim_size = length;
+  webp->decoder = decoder;
   return true;
 }
 
 void* WEBP_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially) {
   WEBP* webp = NULL;
   size_t length = 0;
-  unsigned char* data = NULL;
+  uint8_t* data = NULL;
   WebPBitstreamFeatures features;
   VP8StatusCode status;
   (void) partially;
 
-  data = (unsigned char*) read_patch_head_input_stream_all(env, patch_head_input_stream, &length);
+  data = (uint8_t*) read_patch_head_input_stream_all(env, patch_head_input_stream, &length);
   close_patch_head_input_stream(env, patch_head_input_stream);
   destroy_patch_head_input_stream(env, &patch_head_input_stream);
 
@@ -214,21 +177,22 @@ void* WEBP_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bo
   webp->is_opaque = !features.has_alpha;
 
   if (features.has_animation) {
-    if (!decode_animation(webp, data, length)) {
+    if (!init_streaming_animation(webp, data, length)) {
       free(webp);
       free(data);
       return NULL;
     }
+    // Note: ownership of `data` transferred to `webp->anim_data`
+    return webp;
   } else {
     if (!decode_static_image(webp, data, length, &features)) {
       free(webp);
       free(data);
       return NULL;
     }
+    free(data);
+    return webp;
   }
-
-  free(data);
-  return webp;
 }
 
 bool WEBP_complete(JNIEnv* env, WEBP* webp) {
@@ -246,13 +210,7 @@ void* WEBP_get_pixels(WEBP* webp) {
   if (webp == NULL) {
     return NULL;
   }
-  if (!webp->animated) {
-    return webp->buffer;
-  }
-  if (webp->frame_count == 1 && webp->frames != NULL) {
-    return webp->frames[0];
-  }
-  return NULL;
+  return webp->buffer;
 }
 
 int WEBP_get_width(WEBP* webp) {
@@ -264,58 +222,58 @@ int WEBP_get_height(WEBP* webp) {
 }
 
 int WEBP_get_byte_count(WEBP* webp) {
-  unsigned int i;
   size_t size = sizeof(WEBP);
   if (webp->buffer != NULL) {
     size += (size_t) webp->width * webp->height * 4u;
   }
-  if (webp->frames != NULL) {
-    size += (size_t) webp->frame_count * sizeof(unsigned char*);
-    for (i = 0; i < webp->frame_count; i++) {
-      if (webp->frames[i] != NULL) {
-        size += (size_t) webp->width * webp->height * 4u;
-      }
-    }
-  }
-  if (webp->delays != NULL) {
-    size += (size_t) webp->frame_count * sizeof(int);
-  }
+  size += webp->anim_size;
   return (int) size;
 }
 
 void WEBP_render(WEBP* webp, int src_x, int src_y,
                  void* dst, int dst_w, int dst_h, int dst_x, int dst_y,
                  int width, int height, bool fill_blank, int default_color) {
-  unsigned char* source = NULL;
-  if (webp->animated && webp->frames != NULL && webp->frame_count > 0) {
-    source = webp->frames[webp->current_frame % webp->frame_count];
-  } else {
-    source = webp->buffer;
-  }
-  if (source == NULL) {
+  if (webp == NULL || webp->buffer == NULL) {
     LOGE(MSG("WEBP render source is NULL"));
     return;
   }
-  copy_pixels(source, webp->width, webp->height, src_x, src_y,
+  copy_pixels(webp->buffer, webp->width, webp->height, src_x, src_y,
               dst, dst_w, dst_h, dst_x, dst_y,
               width, height, fill_blank, default_color);
 }
 
 void WEBP_advance(WEBP* webp) {
-  if (webp->animated && webp->frame_count > 0) {
+  uint8_t* frame = NULL;
+  int timestamp = 0;
+  size_t frame_bytes;
+  if (webp == NULL || !webp->animated || webp->decoder == NULL || webp->buffer == NULL) {
+    return;
+  }
+  if (!WebPAnimDecoderHasMoreFrames(webp->decoder)) {
+    WebPAnimDecoderReset(webp->decoder);
+    webp->prev_timestamp = 0;
+    webp->current_frame = 0;
+  } else {
     webp->current_frame = (webp->current_frame + 1) % webp->frame_count;
+  }
+  if (WebPAnimDecoderGetNext(webp->decoder, &frame, &timestamp) && frame != NULL) {
+    int duration = timestamp - webp->prev_timestamp;
+    webp->prev_timestamp = timestamp;
+    webp->current_delay = duration > 0 ? duration : WEBP_DEFAULT_FRAME_DELAY;
+    frame_bytes = (size_t) webp->width * (size_t) webp->height * 4u;
+    memcpy(webp->buffer, frame, frame_bytes);
   }
 }
 
 int WEBP_get_delay(WEBP* webp) {
-  if (!webp->animated || webp->delays == NULL || webp->frame_count == 0) {
+  if (webp == NULL || !webp->animated) {
     return 0;
   }
-  return webp->delays[webp->current_frame % webp->frame_count];
+  return webp->current_delay > 0 ? webp->current_delay : WEBP_DEFAULT_FRAME_DELAY;
 }
 
 int WEBP_get_frame_count(WEBP* webp) {
-  if (webp->animated) {
+  if (webp != NULL && webp->animated) {
     return (int) webp->frame_count;
   } else {
     return 1;
@@ -323,34 +281,28 @@ int WEBP_get_frame_count(WEBP* webp) {
 }
 
 bool WEBP_is_opaque(WEBP* webp) {
-  return webp->is_opaque;
+  return webp != NULL ? webp->is_opaque : false;
 }
 
 void WEBP_recycle(JNIEnv* env, WEBP* webp) {
-  unsigned int frame_count;
   (void) env;
   if (webp == NULL) {
     return;
+  }
+  if (webp->decoder != NULL) {
+    WebPAnimDecoderDelete(webp->decoder);
+    webp->decoder = NULL;
+  }
+  if (webp->anim_data != NULL) {
+    free(webp->anim_data);
+    webp->anim_data = NULL;
+    webp->anim_size = 0;
   }
   if (webp->buffer != NULL) {
     free(webp->buffer);
     webp->buffer = NULL;
   }
-  if (webp->frames != NULL) {
-    frame_count = webp->frame_count;
-    for (unsigned int i = 0; i < frame_count; i++) {
-      free(webp->frames[i]);
-      webp->frames[i] = NULL;
-    }
-    free(webp->frames);
-    webp->frames = NULL;
-  }
-  if (webp->delays != NULL) {
-    free(webp->delays);
-    webp->delays = NULL;
-  }
   free(webp);
 }
 
 #endif // IMAGE_SUPPORT_WEBP
-

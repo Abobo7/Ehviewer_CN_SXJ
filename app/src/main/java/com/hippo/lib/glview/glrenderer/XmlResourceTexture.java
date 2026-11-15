@@ -45,7 +45,10 @@ public class XmlResourceTexture extends UploadedTexture {
 
     @Override
     protected Bitmap onGetBitmap() {
-        Drawable drawable = ContextCompat.getDrawable(mContext, mResId);
+        Drawable drawable = com.hippo.util.DrawableManager.getVectorDrawable(mContext, mResId);
+        if (drawable == null) {
+            drawable = ContextCompat.getDrawable(mContext, mResId);
+        }
 
         int width = mWidth;
         int height = mHeight;

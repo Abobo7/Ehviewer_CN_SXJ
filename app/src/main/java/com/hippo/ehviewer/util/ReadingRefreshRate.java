@@ -4,6 +4,7 @@ import android.os.Build;
 import android.view.Display;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 public final class ReadingRefreshRate {
 
@@ -25,67 +26,77 @@ public final class ReadingRefreshRate {
         return SYSTEM_DEFAULT;
     }
 
-    @Nullable
-    public static Display.Mode findBestMode(@Nullable Display display, int settingHz) {
-        if (display == null || settingHz == SYSTEM_DEFAULT) {
-            return null;
+    public static float resolveHz(@Nullable Display display, int settingHz) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || settingHz == SYSTEM_DEFAULT) {
+            return 0f;
         }
-        Display.Mode[] modes = display.getSupportedModes();
-        if (modes == null || modes.length == 0) {
-            return null;
-        }
-        Display.Mode current = display.getMode();
-        int width = current.getPhysicalWidth();
-        int height = current.getPhysicalHeight();
+        return Api23Impl.resolveHz(display, settingHz);
+    }
 
-        float maxHz = maxRefreshRate(modes, width, height, true);
-        if (maxHz <= 0f) {
-            maxHz = maxRefreshRate(modes, width, height, false);
-        }
-        if (maxHz <= 0f) {
-            return current;
+    @RequiresApi(Build.VERSION_CODES.M)
+    public static final class Api23Impl {
+        private Api23Impl() {
         }
 
-        float targetHz = settingHz == DISPLAY_MAX ? maxHz : Math.min(settingHz, maxHz);
-        Display.Mode best = null;
-        float bestHz = -1f;
-        boolean foundSameRes = false;
-        for (Display.Mode mode : modes) {
-            boolean sameRes = mode.getPhysicalWidth() == width && mode.getPhysicalHeight() == height;
-            float hz = mode.getRefreshRate();
-            if (hz > targetHz + 0.1f) {
-                continue;
+        static float resolveHz(@Nullable Display display, int settingHz) {
+            Display.Mode mode = findBestMode(display, settingHz);
+            return mode != null ? mode.getRefreshRate() : 0f;
+        }
+
+        @Nullable
+        public static Display.Mode findBestMode(@Nullable Display display, int settingHz) {
+            if (display == null || settingHz == SYSTEM_DEFAULT) {
+                return null;
             }
-            if (sameRes) {
-                if (!foundSameRes || hz > bestHz) {
-                    foundSameRes = true;
+            Display.Mode[] modes = display.getSupportedModes();
+            if (modes == null || modes.length == 0) {
+                return null;
+            }
+            Display.Mode current = display.getMode();
+            int width = current.getPhysicalWidth();
+            int height = current.getPhysicalHeight();
+
+            float maxHz = maxRefreshRate(modes, width, height, true);
+            if (maxHz <= 0f) {
+                maxHz = maxRefreshRate(modes, width, height, false);
+            }
+            if (maxHz <= 0f) {
+                return current;
+            }
+
+            float targetHz = settingHz == DISPLAY_MAX ? maxHz : Math.min(settingHz, maxHz);
+            Display.Mode best = null;
+            float bestHz = -1f;
+            boolean foundSameRes = false;
+            for (Display.Mode mode : modes) {
+                boolean sameRes = mode.getPhysicalWidth() == width && mode.getPhysicalHeight() == height;
+                float hz = mode.getRefreshRate();
+                if (hz > targetHz + 0.1f) {
+                    continue;
+                }
+                if (sameRes) {
+                    if (!foundSameRes || hz > bestHz) {
+                        foundSameRes = true;
+                        bestHz = hz;
+                        best = mode;
+                    }
+                } else if (!foundSameRes && hz > bestHz) {
                     bestHz = hz;
                     best = mode;
                 }
-            } else if (!foundSameRes && hz > bestHz) {
-                bestHz = hz;
-                best = mode;
             }
+            return best != null ? best : current;
         }
-        return best != null ? best : current;
-    }
 
-    public static float resolveHz(@Nullable Display display, int settingHz) {
-        if (settingHz == SYSTEM_DEFAULT) {
-            return 0f;
-        }
-        Display.Mode mode = findBestMode(display, settingHz);
-        return mode != null ? mode.getRefreshRate() : 0f;
-    }
-
-    private static float maxRefreshRate(Display.Mode[] modes, int width, int height, boolean matchRes) {
-        float maxHz = 0f;
-        for (Display.Mode mode : modes) {
-            if (matchRes && (mode.getPhysicalWidth() != width || mode.getPhysicalHeight() != height)) {
-                continue;
+        private static float maxRefreshRate(Display.Mode[] modes, int width, int height, boolean matchRes) {
+            float maxHz = 0f;
+            for (Display.Mode mode : modes) {
+                if (matchRes && (mode.getPhysicalWidth() != width || mode.getPhysicalHeight() != height)) {
+                    continue;
+                }
+                maxHz = Math.max(maxHz, mode.getRefreshRate());
             }
-            maxHz = Math.max(maxHz, mode.getRefreshRate());
+            return maxHz;
         }
-        return maxHz;
     }
 }

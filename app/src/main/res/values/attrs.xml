@@ -19,8 +19,8 @@
         res/values/themes.xml-->
     <declare-styleable name="Theme">
         <!--   背景颜色     -->
-        <attr name="android:windowBackground" format="color" />
-        <attr name="android:navigationBarColor" format="color" />
+        <attr name="android:windowBackground" />
+        <attr name="navigationBarSurfaceColor" format="color" />
         <attr name="buttonStyle" format="reference" />
 
         <attr name="colorEdgeEffect" format="color" />

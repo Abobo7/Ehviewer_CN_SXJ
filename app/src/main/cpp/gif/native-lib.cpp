@@ -32,7 +32,13 @@ Java_com_hippo_util_GifHandler_loadPath(JNIEnv *env, jobject instance, jstring p
     int err;
 //用系统函数打开一个gif文件   返回一个结构体，这个结构体为句柄
     GifFileType *gifFileType = DGifOpenFileName(path, &err);
-    DGifSlurp(gifFileType);
+    if (gifFileType == NULL || DGifSlurp(gifFileType) == GIF_ERROR || gifFileType->ImageCount <= 0) {
+        if (gifFileType != NULL) {
+            DGifCloseFile(gifFileType);
+        }
+        env->ReleaseStringUTFChars(path_, path);
+        return 0;
+    }
     GifBean *gifBean = (GifBean *) malloc(sizeof(GifBean));
 
 
@@ -43,8 +49,8 @@ Java_com_hippo_util_GifHandler_loadPath(JNIEnv *env, jobject instance, jstring p
     gifBean->dealys = (int *) malloc(sizeof(int) * gifFileType->ImageCount);
     memset(gifBean->dealys, 0, sizeof(int) * gifFileType->ImageCount);
     gifBean->total_frame = gifFileType->ImageCount;
-    ExtensionBlock *ext;
     for (int i = 0; i < gifFileType->ImageCount; ++i) {
+        ExtensionBlock *ext = NULL;
         SavedImage frame = gifFileType->SavedImages[i];
         for (int j = 0; j < frame.ExtensionBlockCount; ++j) {
             if (frame.ExtensionBlocks[j].Function == GRAPHICS_EXT_FUNC_CODE) {
@@ -54,9 +60,9 @@ Java_com_hippo_util_GifHandler_loadPath(JNIEnv *env, jobject instance, jstring p
         }
         if (ext) {
             int frame_delay = 10 * (ext->Bytes[2] << 8 | ext->Bytes[1]);
-            LOGE("时间  %d   ", frame_delay);
-            gifBean->dealys[i] = frame_delay;
-
+            gifBean->dealys[i] = frame_delay > 10 ? frame_delay : 100;
+        } else {
+            gifBean->dealys[i] = 100;
         }
     }
 
@@ -68,7 +74,7 @@ Java_com_hippo_util_GifHandler_loadPath(JNIEnv *env, jobject instance, jstring p
 extern "C"
 JNIEXPORT jint JNICALL
 Java_com_hippo_util_GifHandler_getWidth__J(JNIEnv *env, jobject instance, jlong ndkGif) {
-
+    if (ndkGif == 0) return 0;
     GifFileType *gifFileType = (GifFileType *) ndkGif;
     return gifFileType->SWidth;
 }
@@ -76,6 +82,7 @@ Java_com_hippo_util_GifHandler_getWidth__J(JNIEnv *env, jobject instance, jlong 
 extern "C"
 JNIEXPORT jint JNICALL
 Java_com_hippo_util_GifHandler_getHeight__J(JNIEnv *env, jobject instance, jlong ndkGif) {
+    if (ndkGif == 0) return 0;
     GifFileType *gifFileType = (GifFileType *) ndkGif;
     return gifFileType->SHeight;
 
@@ -175,6 +182,8 @@ int drawFrame(GifFileType *gif, GifBean *gifBean, AndroidBitmapInfo info, void *
 
         for (y = frameInfo->Top; y < frameInfo->Top + frameInfo->Height; y++) {
 
+            line = (int *) px;
+
             for (x = frameInfo->Left; x < frameInfo->Left + frameInfo->Width; x++) {
 
                 loc = (y - frameInfo->Top) * frameInfo->Width + (x - frameInfo->Left);
@@ -271,7 +280,7 @@ int drawFrame(GifFileType *gif, GifBean *gifBean, AndroidBitmapInfo info, void *
         }
     }
 
-    return delay(ext);
+    return ext ? delay(ext) : 100;
 }
 
 //
@@ -312,23 +321,25 @@ Java_com_hippo_util_GifHandler_updateFrame__JLandroid_graphics_Bitmap_2(JNIEnv *
                                                                         jlong ndkGif,
                                                                         jobject bitmap) {
 
+    if (ndkGif == 0) {
+        return 100;
+    }
     //强转代表gif图片的结构体
     GifFileType *gifFileType = (GifFileType *) ndkGif;
     GifBean *gifBean = (GifBean *) gifFileType->UserData;
+    if (gifBean == NULL || gifBean->total_frame <= 0) {
+        return 100;
+    }
     AndroidBitmapInfo info;
     //代表一幅图片的像素数组
     void *pixels;
     AndroidBitmap_getInfo(env, bitmap, &info);
     //锁定bitmap  一幅图片--》二维 数组   ===一个二维数组
     AndroidBitmap_lockPixels(env, bitmap, &pixels);
+    int currentDelay = gifBean->dealys[gifBean->current_frame];
     drawFrame(gifFileType, gifBean, info, pixels, false);
     //播放完成之后   循环到下一帧
-    gifBean->current_frame += 1;
-//    LOGE("当前帧  %d  ", gifBean->current_frame);
-    if (gifBean->current_frame >= gifBean->total_frame - 1) {
-        gifBean->current_frame = 0;
-//        LOGE("重新过来  %d  ", gifBean->current_frame);
-    }
+    gifBean->current_frame = (gifBean->current_frame + 1) % gifBean->total_frame;
     AndroidBitmap_unlockPixels(env, bitmap);
-    return gifBean->dealys[gifBean->current_frame];
+    return currentDelay > 10 ? currentDelay : 100;
 }

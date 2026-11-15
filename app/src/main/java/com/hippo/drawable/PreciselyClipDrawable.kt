@@ -15,33 +15,33 @@
  */
 package com.hippo.drawable
 
+import android.annotation.SuppressLint
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.DrawableWrapper
+import androidx.appcompat.graphics.drawable.DrawableWrapperCompat
 import com.hippo.lib.yorozuya.MathUtils
 
 /**
- * Show a part of the original drawable
+ * Show a part of the original drawable (uses DrawableWrapperCompat for API 19 support)
  */
+@SuppressLint("RestrictedApi")
 class PreciselyClipDrawable(
     drawable: Drawable,
     offsetX: Int,
     offsetY: Int,
     width: Int,
     height: Int
-) :
-    DrawableWrapper(drawable) {
+) : DrawableWrapperCompat(drawable) {
     private var mClip = false
-    private  var mScale: RectF = RectF()
-    private  var mTemp: Rect = Rect()
+    private var mScale: RectF = RectF()
+    private var mTemp: Rect = Rect()
 
     init {
         val originWidth = drawable.intrinsicWidth.toFloat()
         val originHeight = drawable.intrinsicHeight.toFloat()
         if (originWidth <= 0 || originHeight <= 0) {
-            // Can not clip
             mClip = false
         } else {
             mClip = true
@@ -71,7 +71,6 @@ class PreciselyClipDrawable(
         }
         super.onBoundsChange(bounds)
     }
-
 
     override fun getIntrinsicWidth(): Int {
         return if (mClip) {

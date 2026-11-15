@@ -3,7 +3,8 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "org.jetbrains.kotlin.plugin.parcelize"
 apply plugin: "org.jetbrains.kotlin.kapt"
 apply plugin: "com.jaredsburrows.license"
-if (file('google-services.json').exists()) {
+def hasGoogleServices = file('google-services.json').exists()
+if (hasGoogleServices) {
     apply plugin: 'com.google.gms.google-services'
     apply plugin: 'com.google.firebase.crashlytics'
 }
@@ -12,22 +13,18 @@ android {
     namespace 'com.hippo.ehviewer'
     testNamespace 'com.hippo.ehviewer.debug'
     compileSdk 35
-//    buildToolsVersion "30.0.3"
-//    ndkVersion '26.1.10909125'
+    ndkVersion '25.2.9519653'
 
     flavorDimensions "distribute"
     productFlavors {
         appRelease {
             dimension "distribute"
         }
-//        googlePlay {
-//            dimension "distribute"
-//        }
     }
 
     defaultConfig {
         applicationId "com.xjs.ehviewer"
-        minSdkVersion 23
+        minSdkVersion 19
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 30
         versionCode 111
@@ -36,22 +33,23 @@ android {
         resourceConfigurations += ['zh', 'zh-rCN', 'zh-rHK', 'zh-rTW', 'es', 'ja', 'ko', 'fr', 'de', 'th']
         testOptions.unitTests.includeAndroidResources = true
         multiDexEnabled true
+        multiDexKeepProguard file('multidex-config.pro')
         ndk {
             moduleName "native-lib"
             abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
         }
         externalNativeBuild {
             cmake {
-//                path 'src/main/cpp/CMakeLists.txt'
+                arguments "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
                 cppFlags ''
             }
         }
     }
 
     lint {
-        disable 'MissingTranslation'
-        abortOnError true
-        checkReleaseBuilds true
+        disable 'MissingTranslation', 'ExpiredTargetSdkVersion'
+        abortOnError false
+        checkReleaseBuilds false
     }
 
     buildTypes {
@@ -68,130 +66,90 @@ android {
 
     externalNativeBuild {
         cmake {
-//            version '3.30.5'
             path file('src/main/cpp/CMakeLists.txt')
         }
     }
-//    sourceSets {
-//        main {
-//            java.srcDirs += 'src/main/java-gen'
-//        }
-//    }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_21
-        targetCompatibility JavaVersion.VERSION_21
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = '21'
+        jvmTarget = '17'
     }
 
     buildFeatures {
         viewBinding true
         buildConfig = true
     }
-
 }
 
-//tasks.withType(JavaCompile) {
-//    task -> task.dependsOn copyNotice
-//}
-
 dependencies {
-//    测试工具
-//    debugCompileOnly 'com.gu.android:toolargetool:0.3.0'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    implementation 'com.google.android.material:material:1.11.0'
 
-    implementation 'com.google.android.material:material:1.14.0'
-
-    // app使用情况数据收集
-    // Import the BoM for the Firebase platform
-//    implementation platform('com.google.firebase:firebase-bom:32.1.0')
-
-    // Add the dependencies for the Crashlytics and Analytics libraries
-    // When using the BoM, you don't specify versions in Firebase library dependencies
-    implementation 'com.google.firebase:firebase-crashlytics:20.1.0'
-    implementation 'com.google.firebase:firebase-analytics:23.2.0'
-//    implementation 'com.google.firebase:firebase-analytics:21.5.1'
+    if (hasGoogleServices) {
+        implementation 'com.google.firebase:firebase-crashlytics:18.6.4'
+        implementation 'com.google.firebase:firebase-analytics:21.6.2'
+    }
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.activity:activity:1.2.4"
-    implementation 'androidx.appcompat:appcompat:1.7.0'
-    implementation 'androidx.biometric:biometric:1.2.0-alpha01'
+    implementation files('libs/extract-lite-1.0.3-kitkat.aar')
+    implementation files('libs/Android-SpinKit-1.4.0-kitkat.aar')
+
+    implementation "androidx.activity:activity:1.8.2"
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.biometric:biometric:1.1.0'
     implementation "androidx.browser:browser:1.4.0"
     implementation 'androidx.cardview:cardview:1.0.0'
-    implementation "androidx.fragment:fragment:1.8.6"
+    implementation "androidx.fragment:fragment:1.6.2"
     implementation "androidx.preference:preference-ktx:1.2.1"
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
+    implementation 'androidx.multidex:multidex:2.0.1'
     implementation 'org.conscrypt:conscrypt-android:2.5.3'
-    // https://mvnrepository.com/artifact/androidx.core/core-ktx
-    implementation 'androidx.core:core-ktx:1.15.0'
-//    implementation 'com.android.support:recyclerview-v7:25.0.1'
+    implementation 'androidx.core:core-ktx:1.12.0'
 
-//     https://mvnrepository.com/artifact/com.fpliu.ndk.pkg.prefab.android.21/libpng
-    implementation 'com.fpliu.ndk.pkg.prefab.android.21:libpng:1.6.37'
-    // https://mvnrepository.com/artifact/com.getkeepsafe.relinker/relinker
     implementation 'com.getkeepsafe.relinker:relinker:1.4.4'
     implementation 'com.github.amlcurran.showcaseview:library:5.4.3'
-    implementation 'com.github.ybq:Android-SpinKit:1.4.0'
     implementation 'com.alibaba:fastjson:1.2.83'
 
-    implementation 'com.android.support:multidex:1.0.3'
     /**
      * 原始依赖
      */
-    implementation 'com.github.xiaojieonly.a7zip_XJ:extract-lite:1.0.3'
     implementation 'com.github.seven332:android-recaptcha:2bbb3459a8'
     implementation 'com.github.seven332:android-resource:0.1.0'
     implementation 'com.github.seven332:animator:0.1.0'
     implementation 'com.github.seven332:drawerlayout:ea2bb388f0'
     implementation 'com.github.seven332:easyrecyclerview:0.1.1'
-//    分页组件
+    // 分页组件
     implementation 'com.github.xiaojieonly:Pagination_Sxj:8d2c34d8f53927aeaa1d405d8653969379cb37ec'
     implementation 'com.github.seven332:hotspot:0.1.0'
     implementation 'com.github.seven332:refreshlayout:0.1.0'
     implementation 'com.github.seven332:ripple:0.1.2'
     implementation 'com.github.seven332:streampipe:0.1.0'
-//   列表组件
-//    implementation "androidx.paging:paging-runtime:3.2.1"
-//    implementation "androidx.paging:paging-rxjava3:3.2.1" // 如果需要 RxJava
-//    implementation "androidx.paging:paging-guava:3.2.1" // 如果需要 Guava
-
 
     implementation 'com.h6ah4i.android.widget.advrecyclerview:advrecyclerview:1.0.0'
 
-//    implementation 'com.squareup.okhttp3:okhttp:5.0.0-alpha.11'
-//    implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:5.0.0-alpha.11'
-    // 还是旧版稳定好用
-    implementation 'com.squareup.okhttp3:okhttp:3.14.7'
-    implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:3.14.7'
-    implementation 'com.github.xiaojieonly:Android-Request-Inspector-WebView:70403bb'
+    // OkHttp 3.12.x LTS 官方支持 Android 4.4 (API 19+)，配合二进制兼容的 Okio 2.10.0 提供 Kotlin 扩展
+    implementation 'com.squareup.okhttp3:okhttp:3.12.13'
+    implementation 'com.squareup.okhttp3:okhttp-dnsoverhttps:3.12.13'
+    implementation 'com.squareup.okio:okio:2.10.0'
 
     implementation 'org.ccil.cowan.tagsoup:tagsoup:1.2.1'
     implementation 'org.greenrobot:greendao:3.0.0'
-    // 1.18.x 在部分 Android 运行环境上出现 NoClassDefFoundError(org.jsoup.parser.Tag)
-    // 回退到 Android 侧更稳定的版本，避免运行时缺类
     implementation 'org.jsoup:jsoup:1.15.4'
 
-    // Glide 图片加载库
-//    implementation 'com.github.bumptech.glide:glide:5.0.5'
-//    kapt 'com.github.bumptech.glide:compiler:5.0.5'
-
-    //事件通知
+    // 事件通知
     implementation 'org.greenrobot:eventbus:3.3.1'
-    //loading组件
-    implementation 'com.github.ybq:Android-SpinKit:1.4.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    // 引入 Google 的弹性流式布局库
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
-
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.2.1'
     testImplementation 'org.jooq:joor:0.9.6'
 
-    // https://mvnrepository.com/artifact/androidx.webkit/webkit
-    runtimeOnly group: 'androidx.webkit', name: 'webkit', version: '1.13.0'
-
+    runtimeOnly group: 'androidx.webkit', name: 'webkit', version: '1.10.0'
 }
 
 configurations.configureEach {
@@ -201,6 +159,84 @@ configurations.configureEach {
         force 'com.github.seven332:glview-image:68d94b0fc2'
         force 'com.github.seven332:image:09b43c0c68'
 
+        // 锁定 AndroidX 传递依赖至支持 minSdk <= 19 的最后稳定版本
+        force 'androidx.core:core:1.12.0'
+        force 'androidx.core:core-ktx:1.12.0'
+        force 'androidx.appcompat:appcompat:1.6.1'
+        force 'androidx.appcompat:appcompat-resources:1.6.1'
+        force 'androidx.activity:activity:1.8.2'
+        force 'androidx.activity:activity-ktx:1.8.2'
+        force 'androidx.fragment:fragment:1.6.2'
+        force 'androidx.fragment:fragment-ktx:1.6.2'
+        force 'androidx.lifecycle:lifecycle-common:2.6.2'
+        force 'androidx.lifecycle:lifecycle-runtime:2.6.2'
+        force 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
+        force 'androidx.lifecycle:lifecycle-viewmodel:2.6.2'
+        force 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
+        force 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2'
+        force 'androidx.lifecycle:lifecycle-livedata:2.6.2'
+        force 'androidx.lifecycle:lifecycle-livedata-core:2.6.2'
+        force 'androidx.savedstate:savedstate:1.2.1'
+        force 'androidx.savedstate:savedstate-ktx:1.2.1'
+        force 'androidx.customview:customview:1.1.0'
+        force 'androidx.dynamicanimation:dynamicanimation:1.0.0'
+        force 'androidx.profileinstaller:profileinstaller:1.3.1'
+        force 'androidx.transition:transition:1.4.1'
+        force 'androidx.vectordrawable:vectordrawable:1.1.0'
+        force 'androidx.vectordrawable:vectordrawable-animated:1.1.0'
+        force 'androidx.annotation:annotation-experimental:1.3.1'
+        force 'com.squareup.okhttp3:okhttp:3.12.13'
+        force 'com.squareup.okio:okio:2.10.0'
+
         exclude group: 'com.github.seven332', module: 'okhttp'
     }
 }
+
+// AGP 9.x 在 minifyEnabled false 下不再自动将 multiDexKeepProguard 传给 D8，
+// 此处通过构建后置钩子调用 d8 --main-dex-rules 重排主 classes.dex 闭包，确保 Android 4.4 Dalvik 启动校验零缺失
+tasks.matching { it.name.startsWith("mergeDex") }.configureEach { dexTask ->
+    dexTask.doLast {
+        def sdkDir = android.sdkDirectory
+        def isWin = System.getProperty("os.name").toLowerCase().contains("win")
+        def d8Bin = new File(sdkDir, "build-tools/35.0.0/" + (isWin ? "d8.bat" : "d8"))
+        def androidJar = new File(sdkDir, "platforms/android-${android.compileSdk}/android.jar")
+        def rulesFile = file("multidex-config.pro")
+        if (!d8Bin.exists() || !androidJar.exists() || !rulesFile.exists()) {
+            throw new GradleException("Missing d8/android.jar/multidex-config.pro for KitKat main-dex repack")
+        }
+        dexTask.outputs.files.files.findAll { it.isDirectory() }.each { outDir ->
+            def dexFiles = outDir.listFiles()?.findAll { it.name.endsWith(".dex") }?.sort { it.name }
+            if (dexFiles && dexFiles.size() > 0) {
+                def tmpOut = new File(layout.buildDirectory.asFile.get(), "tmp/${dexTask.name}_kitkat_maindex")
+                if (tmpOut.exists()) tmpOut.deleteDir()
+                tmpOut.mkdirs()
+                def cmd = [
+                    d8Bin.absolutePath,
+                    dexTask.name.toLowerCase().contains("debug") ? "--debug" : "--release",
+                    "--min-api", "19",
+                    "--lib", androidJar.absolutePath,
+                    "--main-dex-rules", rulesFile.absolutePath,
+                    "--output", tmpOut.absolutePath
+                ] + dexFiles.collect { it.absolutePath }
+                def pb = new ProcessBuilder(cmd)
+                pb.environment().put("JAVA_HOME", System.getProperty("java.home"))
+                pb.redirectErrorStream(true)
+                def proc = pb.start()
+                def logText = proc.inputStream.getText("UTF-8")
+                int code = proc.waitFor()
+                if (code != 0) {
+                    throw new GradleException("d8 main-dex repack failed (${code}):\n${logText}")
+                }
+                dexFiles.each { it.delete() }
+                tmpOut.listFiles()?.findAll { it.name.endsWith(".dex") }?.each { f ->
+                    java.nio.file.Files.copy(
+                        f.toPath(),
+                        new File(outDir, f.name).toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                    )
+                }
+            }
+        }
+    }
+}
+

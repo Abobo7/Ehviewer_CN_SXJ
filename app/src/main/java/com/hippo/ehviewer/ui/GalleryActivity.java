@@ -59,7 +59,9 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResult;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -373,7 +375,7 @@ public class GalleryActivity extends EhActivity implements SeekBar.OnSeekBarChan
         mGLRootView = (GLRootView) ViewUtils.$$(this, R.id.gl_root_view);
         mGalleryAdapter = new GalleryAdapter(mGLRootView, mGalleryProvider);
         Resources resources = getResources();
-        mGalleryView = new GalleryView.Builder(this, mGalleryAdapter).setListener(this).setLayoutMode(Settings.getReadingDirection()).setScaleMode(Settings.getPageScaling()).setStartPosition(Settings.getStartPosition()).setStartPage(startPage).setBackgroundColor(AttrResources.getAttrColor(this, android.R.attr.colorBackground)).setEdgeColor(AttrResources.getAttrColor(this, R.attr.colorEdgeEffect) & 0xffffff | 0x33000000).setPagerInterval(Settings.getShowPageInterval() ? resources.getDimensionPixelOffset(R.dimen.gallery_pager_interval) : 0).setScrollInterval(Settings.getShowPageInterval() ? resources.getDimensionPixelOffset(R.dimen.gallery_scroll_interval) : 0).setPageMinHeight(resources.getDimensionPixelOffset(R.dimen.gallery_page_min_height)).setPageInfoInterval(resources.getDimensionPixelOffset(R.dimen.gallery_page_info_interval)).setProgressColor(ResourcesUtils.getAttrColor(this, androidx.appcompat.R.attr.colorPrimary)).setProgressSize(resources.getDimensionPixelOffset(R.dimen.gallery_progress_size)).setPageTextColor(AttrResources.getAttrColor(this, android.R.attr.textColorSecondary)).setPageTextSize(resources.getDimensionPixelOffset(R.dimen.gallery_page_text_size)).setPageTextTypeface(Typeface.DEFAULT).setErrorTextColor(resources.getColor(R.color.red_500, null)).setErrorTextSize(resources.getDimensionPixelOffset(R.dimen.gallery_error_text_size)).setDefaultErrorString(resources.getString(R.string.error_unknown)).setEmptyString(resources.getString(R.string.error_empty)).build();
+        mGalleryView = new GalleryView.Builder(this, mGalleryAdapter).setListener(this).setLayoutMode(Settings.getReadingDirection()).setScaleMode(Settings.getPageScaling()).setStartPosition(Settings.getStartPosition()).setStartPage(startPage).setBackgroundColor(AttrResources.getAttrColor(this, android.R.attr.colorBackground)).setEdgeColor(AttrResources.getAttrColor(this, R.attr.colorEdgeEffect) & 0xffffff | 0x33000000).setPagerInterval(Settings.getShowPageInterval() ? resources.getDimensionPixelOffset(R.dimen.gallery_pager_interval) : 0).setScrollInterval(Settings.getShowPageInterval() ? resources.getDimensionPixelOffset(R.dimen.gallery_scroll_interval) : 0).setPageMinHeight(resources.getDimensionPixelOffset(R.dimen.gallery_page_min_height)).setPageInfoInterval(resources.getDimensionPixelOffset(R.dimen.gallery_page_info_interval)).setProgressColor(ResourcesUtils.getAttrColor(this, androidx.appcompat.R.attr.colorPrimary)).setProgressSize(resources.getDimensionPixelOffset(R.dimen.gallery_progress_size)).setPageTextColor(AttrResources.getAttrColor(this, android.R.attr.textColorSecondary)).setPageTextSize(resources.getDimensionPixelOffset(R.dimen.gallery_page_text_size)).setPageTextTypeface(Typeface.DEFAULT).setErrorTextColor(ContextCompat.getColor(this, R.color.red_500)).setErrorTextSize(resources.getDimensionPixelOffset(R.dimen.gallery_error_text_size)).setDefaultErrorString(resources.getString(R.string.error_unknown)).setEmptyString(resources.getString(R.string.error_empty)).build();
         mGLRootView.setContentPane(mGalleryView);
         mGLRootView.setOnGenericMotionListener(this::onGenericMotion);
         mGalleryProvider.setListener(mGalleryAdapter);
@@ -445,13 +447,7 @@ public class GalleryActivity extends EhActivity implements SeekBar.OnSeekBarChan
 
         // Cutout
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            getWindow().getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-
-            GalleryHeader galleryHeader = findViewById(R.id.gallery_header);
-            galleryHeader.setOnApplyWindowInsetsListener((v, insets) -> {
-                galleryHeader.setDisplayCutout(insets.getDisplayCutout());
-                return insets;
-            });
+            Api28CutoutHelper.apply(this);
         }
 
         if (Settings.getGuideGallery()) {
@@ -465,6 +461,21 @@ public class GalleryActivity extends EhActivity implements SeekBar.OnSeekBarChan
      * 不能在主线程调用 eglInitialize 或 eglTerminate：EGL_DEFAULT_DISPLAY 是进程级的，
      * eglTerminate 会把 GL 线程正在使用的 display 拆掉，随后 eglChooseConfig 返回 0x3001。
      */
+    @RequiresApi(Build.VERSION_CODES.P)
+    private static final class Api28CutoutHelper {
+        static void apply(GalleryActivity activity) {
+            activity.getWindow().getAttributes().layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            GalleryHeader galleryHeader = activity.findViewById(R.id.gallery_header);
+            if (galleryHeader != null) {
+                galleryHeader.setOnApplyWindowInsetsListener((v, insets) -> {
+                    galleryHeader.setDisplayCutout(insets.getDisplayCutout());
+                    return insets;
+                });
+            }
+        }
+    }
+
     private boolean isEglAvailable() {
         try {
             EGL10 egl = (EGL10) EGLContext.getEGL();
@@ -936,26 +947,33 @@ public class GalleryActivity extends EhActivity implements SeekBar.OnSeekBarChan
     }
 
     private void applyReadingRefreshRate() {
-        if (!ReadingRefreshRate.isSupported()) {
+        if (!ReadingRefreshRate.isSupported() || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             return;
         }
-        Window window = getWindow();
-        WindowManager.LayoutParams lp = window.getAttributes();
-        int setting = Settings.getReadingRefreshRateHz();
-        if (setting == ReadingRefreshRate.SYSTEM_DEFAULT) {
-            lp.preferredRefreshRate = 0f;
-            lp.preferredDisplayModeId = 0;
-        } else {
-            Display.Mode mode = ReadingRefreshRate.findBestMode(getDisplay(), setting);
-            if (mode != null) {
-                lp.preferredDisplayModeId = mode.getModeId();
-                lp.preferredRefreshRate = 0f;
-            } else {
+        Api30RefreshRateHelper.apply(this);
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private static final class Api30RefreshRateHelper {
+        static void apply(GalleryActivity activity) {
+            Window window = activity.getWindow();
+            WindowManager.LayoutParams lp = window.getAttributes();
+            int setting = Settings.getReadingRefreshRateHz();
+            if (setting == ReadingRefreshRate.SYSTEM_DEFAULT) {
                 lp.preferredRefreshRate = 0f;
                 lp.preferredDisplayModeId = 0;
+            } else {
+                Display.Mode mode = ReadingRefreshRate.Api23Impl.findBestMode(activity.getDisplay(), setting);
+                if (mode != null) {
+                    lp.preferredDisplayModeId = mode.getModeId();
+                    lp.preferredRefreshRate = 0f;
+                } else {
+                    lp.preferredRefreshRate = 0f;
+                    lp.preferredDisplayModeId = 0;
+                }
             }
+            window.setAttributes(lp);
         }
-        window.setAttributes(lp);
     }
 
     private void shareImage(int page) {

@@ -17,11 +17,20 @@
 package com.hippo.scene;
 
 import android.app.Application;
+import android.content.Context;
 import android.util.SparseArray;
+
+import androidx.multidex.MultiDex;
 
 import com.hippo.lib.yorozuya.IntIdGenerator;
 
 public abstract class SceneApplication extends Application {
+
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+        MultiDex.install(this);
+    }
 
     private final IntIdGenerator mIdGenerator = new IntIdGenerator();
     private final SparseArray<StageActivity> mStageMap = new SparseArray<>();

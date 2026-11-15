@@ -20,7 +20,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.drawable.Animatable;
-import android.graphics.drawable.AnimatedImageDrawable;
+import android.graphics.drawable.Animatable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.TransitionDrawable;
@@ -164,7 +164,7 @@ public class LoadImageView extends FixedAspectImageView implements Unikery<Image
     }
 
     private void clearDrawable() {
-
+        stop();
         // Set drawable null
         setImageDrawable(null);
     }
@@ -309,11 +309,12 @@ public class LoadImageView extends FixedAspectImageView implements Unikery<Image
     public boolean onGetValue(@NonNull Image value, int source) {
         Drawable drawable;
         try {
-            Drawable.ConstantState state = value.getDrawable().getConstantState();
-            if (state!=null){
+            Drawable raw = value.getDrawable();
+            Drawable.ConstantState state = raw.getConstantState();
+            if (state != null) {
                 drawable = state.newDrawable();
-            }else {
-                drawable = value.getDrawable();
+            } else {
+                drawable = raw;
             }
         } catch (Exception e) {
             // The image might be recycled because it is removed from memory cache.
@@ -340,6 +341,7 @@ public class LoadImageView extends FixedAspectImageView implements Unikery<Image
         } else {
             setImageDrawable(drawable);
         }
+        start();
 
         return true;
     }
@@ -392,30 +394,24 @@ public class LoadImageView extends FixedAspectImageView implements Unikery<Image
     @Override
     public void start() {
         Drawable drawable = getImageDrawable();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            if (drawable instanceof AnimatedImageDrawable animatedImageDrawable) {
-                animatedImageDrawable.start();
-            }
+        if (drawable instanceof Animatable animatable) {
+            animatable.start();
         }
     }
 
     @Override
     public void stop() {
         Drawable drawable = getImageDrawable();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            if (drawable instanceof AnimatedImageDrawable animatedImageDrawable) {
-                animatedImageDrawable.stop();
-            }
+        if (drawable instanceof Animatable animatable) {
+            animatable.stop();
         }
     }
 
     @Override
     public boolean isRunning() {
         Drawable drawable = getImageDrawable();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            if (drawable instanceof AnimatedImageDrawable animatedImageDrawable) {
-                return animatedImageDrawable.isRunning();
-            }
+        if (drawable instanceof Animatable animatable) {
+            return animatable.isRunning();
         }
         return false;
     }

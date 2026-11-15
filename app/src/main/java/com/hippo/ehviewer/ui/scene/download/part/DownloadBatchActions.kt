@@ -205,23 +205,17 @@ class DownloadBatchActions(private val mHost: Host) {
         val context: Context = mHost.eHContext ?: return
         if (DownloadAdapter.DRAG_ENABLE) {
             fab.setImageDrawable(
-                mHost.resources?.let {
-                    ResourcesCompat.getDrawable(
-                        it,
-                        R.drawable.v_mobile_hand_left_x24,
-                        context.theme
-                    )
-                }
+                com.hippo.util.DrawableManager.getVectorDrawable(
+                    context,
+                    R.drawable.v_mobile_hand_left_x24
+                )
             )
         } else {
             fab.setImageDrawable(
-                mHost.resources?.let {
-                    ResourcesCompat.getDrawable(
-                        it,
-                        R.drawable.v_mobile_hand_left_off_x24,
-                        context.theme
-                    )
-                }
+                com.hippo.util.DrawableManager.getVectorDrawable(
+                    context,
+                    R.drawable.v_mobile_hand_left_off_x24
+                )
             )
         }
         //        mDragDropManager.cancelDrag(dragEnable);

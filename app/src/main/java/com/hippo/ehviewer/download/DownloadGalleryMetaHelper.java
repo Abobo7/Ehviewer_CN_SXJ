@@ -4,6 +4,7 @@ import android.net.Uri;
 import android.os.Build;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import com.hippo.ehviewer.dao.DownloadInfo;
 import com.hippo.ehviewer.spider.SpiderDen;
@@ -44,19 +45,27 @@ public final class DownloadGalleryMetaHelper {
             if (uri != null && "file".equalsIgnoreCase(uri.getScheme()) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 String path = uri.getPath();
                 if (path != null) {
-                    BasicFileAttributes attrs = Files.readAttributes(new File(path).toPath(), BasicFileAttributes.class);
-                    if (attrs.creationTime() != null) {
-                        long creation = attrs.creationTime().toMillis();
-                        if (creation > 0) {
-                            return creation;
-                        }
-                    }
+                    return Api26FileAttrs.readCreationMillis(path);
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
         return -1L;
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private static final class Api26FileAttrs {
+        static long readCreationMillis(String path) throws Exception {
+            BasicFileAttributes attrs = Files.readAttributes(new File(path).toPath(), BasicFileAttributes.class);
+            if (attrs.creationTime() != null) {
+                long creation = attrs.creationTime().toMillis();
+                if (creation > 0) {
+                    return creation;
+                }
+            }
+            return -1L;
+        }
     }
 
     private static long getDirectoryLastModifiedTime(UniFile downloadDir) {

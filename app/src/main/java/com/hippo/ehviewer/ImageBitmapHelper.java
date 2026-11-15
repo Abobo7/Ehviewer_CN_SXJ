@@ -27,6 +27,7 @@ import com.hippo.streampipe.InputStreamPipe;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 public class ImageBitmapHelper implements ValueHelper<Image> {
     private static final String TAG = "ImageBitmapHelper";
@@ -43,7 +44,7 @@ public class ImageBitmapHelper implements ValueHelper<Image> {
     public Image decode(@NonNull InputStreamPipe isPipe,boolean hardware) {
         try {
             isPipe.obtain();
-            FileInputStream is = (FileInputStream) isPipe.open();
+            InputStream is = isPipe.open();
             Image image = Image.decode(is,hardware);
             if (image == null) {
                 Log.w(TAG, "Image decode failed, result is null. hardware=" + hardware);

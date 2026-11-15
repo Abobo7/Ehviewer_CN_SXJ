@@ -1,6 +1,7 @@
 package com.hippo.ehviewer.widget;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.os.Build;
@@ -53,6 +54,7 @@ public class JumpDateSelector extends LinearLayout implements DatePicker.OnDateC
         init(context);
     }
 
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     public JumpDateSelector(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         init(context);
@@ -69,13 +71,8 @@ public class JumpDateSelector extends LinearLayout implements DatePicker.OnDateC
         datePicker.init(yearSelected, monthOfYearSelected, dayOfMonthSelected,this);
         datePicker.setMaxDate(calendar.getTimeInMillis());
 
-        Calendar minDate;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            minDate  = new Calendar.Builder().setDate(2007,3,20).build();
-        }else {
-            minDate = Calendar.getInstance();
-            minDate.set(2007,3,20);
-        }
+        Calendar minDate = Calendar.getInstance();
+        minDate.set(2007, 3, 20);
         datePicker.setMinDate(minDate.getTimeInMillis());
         pickDateButton = findViewById(R.id.picker_date);
         gotoJumpButton = findViewById(R.id.goto_jump);

@@ -274,7 +274,7 @@ public class ArchiveGalleryProvider extends GalleryProvider2 {
 //          Bitmap bitmap = BitmapFactory.decodeStream(stream,null,option);
 //          BitmapDrawable drawable = new BitmapDrawable(EhApplication.getInstance().getResources(),bitmap);
 //          Image image = Image.decode(drawable, false);
-          Image image = Image.decode(BitmapDrawable.createFromStream(stream,null), false);
+          Image image = Image.decode(stream, false);
 //            Image imag = Image1.decode(stream, true);
           if (image != null) {
             notifyPageSucceed(index, image);

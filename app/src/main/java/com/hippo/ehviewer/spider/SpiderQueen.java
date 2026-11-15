@@ -1450,6 +1450,18 @@ public final class SpiderQueen implements Runnable {
                     MediaType mediaType = responseBody.contentType();
                     if (mediaType != null) {
                         extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mediaType.toString());
+                        if (extension == null) {
+                            String sub = mediaType.subtype();
+                            if ("webp".equalsIgnoreCase(sub)) {
+                                extension = "webp";
+                            } else if ("gif".equalsIgnoreCase(sub)) {
+                                extension = "gif";
+                            } else if ("png".equalsIgnoreCase(sub)) {
+                                extension = "png";
+                            } else if ("jpeg".equalsIgnoreCase(sub) || "jpg".equalsIgnoreCase(sub)) {
+                                extension = "jpg";
+                            }
+                        }
                         if (extension != null&&!extension.contains(".")){
                             extension= "."+extension;
                         }

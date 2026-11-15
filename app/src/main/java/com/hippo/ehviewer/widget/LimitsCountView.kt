@@ -1,7 +1,9 @@
 package com.hippo.ehviewer.widget
 
 import android.animation.Animator
+import android.annotation.TargetApi
 import android.content.Context
+import android.os.Build
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
@@ -64,6 +66,7 @@ class LimitsCountView : FrameLayout {
         init(context)
     }
 
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     constructor(
         context: Context,
         attrs: AttributeSet?,
@@ -187,13 +190,26 @@ class LimitsCountView : FrameLayout {
 
     private fun showNext() {
         rows[index]!!.visibility = VISIBLE
-        rows[index]!!.animate().translationZ(-50f).alpha(1f).setDuration(100)
+        val anim = rows[index]!!.animate().alpha(1f).setDuration(100)
             .setListener(onViewNeedVisible)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Api21AnimHelper.translationZ(anim, -50f)
+        }
     }
 
     private fun removeNext() {
-        rows[index]!!.animate().translationZ(0f).alpha(0f).setDuration(100)
+        val anim = rows[index]!!.animate().alpha(0f).setDuration(100)
             .setListener(onViewNeedGone)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Api21AnimHelper.translationZ(anim, 0f)
+        }
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    private object Api21AnimHelper {
+        fun translationZ(anim: android.view.ViewPropertyAnimator, value: Float) {
+            anim.translationZ(value)
+        }
     }
 
     private fun bindingData() {

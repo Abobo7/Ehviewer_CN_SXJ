@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:color="?android:navigationBarColor"
+    android:background="?attr/navigationBarSurfaceColor"
     android:maxHeight="250dp"
     android:orientation="vertical">
 
@@ -133,7 +133,7 @@
             android:layout_height="18dp"
             android:layout_gravity="end|center_vertical"
             android:visibility="gone"
-            app:SpinKit_Color="?android:attr/colorAccent" />
+            app:SpinKit_Color="?attr/colorAccent" />
 
     </FrameLayout>
 </LinearLayout>

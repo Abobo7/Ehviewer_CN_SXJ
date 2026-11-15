@@ -26,6 +26,7 @@ import com.hippo.ehviewer.R
 import com.hippo.ehviewer.ui.scene.SolidScene
 import androidx.appcompat.app.AlertDialog
 import com.hippo.lib.yorozuya.AssertUtils
+import com.hippo.util.CookieManagerCompat
 import okhttp3.Cookie
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -67,9 +68,7 @@ class WebViewSignInScene : SolidScene() {
         return try {
             // http://stackoverflow.com/questions/32284642/how-to-handle-an-uncatched-exception
             val cookieManager = CookieManager.getInstance()
-            cookieManager.flush()
-            cookieManager.removeAllCookies(null)
-            cookieManager.removeSessionCookies(null)
+            CookieManagerCompat.clearAllCookies(context, cookieManager)
             CookieManager.getInstance().setAcceptCookie(true)
             CookieManager.setAcceptFileSchemeCookies(true)
 
@@ -227,24 +226,14 @@ class WebViewSignInScene : SolidScene() {
                 responseHeaders[headerName] = okHttpResponse.header(headerName)
             }
 
-            // Create the WebResourceResponse
-            if (okHttpResponse.body() == null) {
-                return WebResourceResponse(
-                    mimeType,
-                    encoding,
-                    statusCode,
-                    reasonPhrase,
-                    responseHeaders,
-                    null
-                )
-            }
-            return WebResourceResponse(
+            // Create the WebResourceResponse (API 19 compatible via CookieManagerCompat)
+            return CookieManagerCompat.createWebResourceResponse(
                 mimeType,
                 encoding,
                 statusCode,
                 reasonPhrase,
                 responseHeaders,
-                okHttpResponse.body()!!.byteStream()
+                okHttpResponse.body()?.byteStream()
             )
         }
 

@@ -121,25 +121,33 @@ public class UserImageChange implements PermissionCallBack {
         popupWindow.setOutsideTouchable(true);
         popupWindow.setTouchable(true);
 
-        TransitionSet enterTransitionSet = new TransitionSet();
-        enterTransitionSet.setDuration(300);
-        Slide enterSlide = new Slide(Gravity.BOTTOM);
-        enterSlide.setMode(Visibility.MODE_IN);
-        enterTransitionSet.addTransition(enterSlide);
-        enterTransitionSet.setOrdering(TransitionSet.ORDERING_TOGETHER);
-        popupWindow.setEnterTransition(enterTransitionSet);
-
-        TransitionSet exitTransitionSet = new TransitionSet();
-        exitTransitionSet.setDuration(300);
-        Slide exitSlide = new Slide(Gravity.BOTTOM);
-        exitSlide.setMode(Visibility.MODE_OUT);
-        exitTransitionSet.addTransition(exitSlide);
-        exitTransitionSet.setOrdering(TransitionSet.ORDERING_TOGETHER);
-        popupWindow.setExitTransition(exitTransitionSet);
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Api23PopupHelper.applyTransitions(popupWindow);
+        }
 
         popupWindow.showAtLocation(rootLayoutInflater.inflate(R.layout.activity_main, null), Gravity.BOTTOM, 0, 0);
 
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.M)
+    private static final class Api23PopupHelper {
+        static void applyTransitions(PopupWindow popupWindow) {
+            TransitionSet enterTransitionSet = new TransitionSet();
+            enterTransitionSet.setDuration(300);
+            Slide enterSlide = new Slide(Gravity.BOTTOM);
+            enterSlide.setMode(Visibility.MODE_IN);
+            enterTransitionSet.addTransition(enterSlide);
+            enterTransitionSet.setOrdering(TransitionSet.ORDERING_TOGETHER);
+            popupWindow.setEnterTransition(enterTransitionSet);
+
+            TransitionSet exitTransitionSet = new TransitionSet();
+            exitTransitionSet.setDuration(300);
+            Slide exitSlide = new Slide(Gravity.BOTTOM);
+            exitSlide.setMode(Visibility.MODE_OUT);
+            exitTransitionSet.addTransition(exitSlide);
+            exitTransitionSet.setOrdering(TransitionSet.ORDERING_TOGETHER);
+            popupWindow.setExitTransition(exitTransitionSet);
+        }
     }
 
     private void cancel(DialogInterface dialog, int which) {

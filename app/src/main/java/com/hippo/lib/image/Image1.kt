@@ -265,8 +265,15 @@ class Image1 private constructor(
 
         @JvmStatic
         fun initialize(context: Context?) {
-            ReLinker.loadLibrary(context, "image")
-            //        System.loadLibrary("ehviewer");
+            try {
+                if (context != null) {
+                    ReLinker.loadLibrary(context, "image")
+                } else {
+                    System.loadLibrary("image")
+                }
+            } catch (_: Throwable) {
+                System.loadLibrary("image")
+            }
         }
         @JvmStatic
         private external fun nativeDecode(`is`: InputStream?, partially: Boolean): Image1?

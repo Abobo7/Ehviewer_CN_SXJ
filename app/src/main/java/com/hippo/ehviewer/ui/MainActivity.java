@@ -417,15 +417,15 @@ public final class MainActivity extends StageActivity
             mNavView.setNavigationItemSelectedListener(this);
         }
         if (Settings.getTheme() == 0) {
-            mChangeTheme.setTextColor(getColor(R.color.theme_change_light));
+            mChangeTheme.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.theme_change_light));
 
-            mChangeTheme.setBackgroundColor(getColor(R.color.white));
+            mChangeTheme.setBackgroundColor(androidx.core.content.ContextCompat.getColor(this, R.color.white));
         } else if (Settings.getTheme() == 1) {
-            mChangeTheme.setTextColor(getColor(R.color.theme_change_other));
-            mChangeTheme.setBackgroundColor(getColor(R.color.grey_850));
+            mChangeTheme.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.theme_change_other));
+            mChangeTheme.setBackgroundColor(androidx.core.content.ContextCompat.getColor(this, R.color.grey_850));
         } else {
-            mChangeTheme.setTextColor(getColor(R.color.theme_change_other));
-            mChangeTheme.setBackgroundColor(getColor(R.color.black));
+            mChangeTheme.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.theme_change_other));
+            mChangeTheme.setBackgroundColor(androidx.core.content.ContextCompat.getColor(this, R.color.black));
         }
 
         mChangeTheme.setText(getThemeText());
@@ -462,14 +462,15 @@ public final class MainActivity extends StageActivity
     private void initBackgroundImageData(File file) {
         if (file != null) {
             String name = file.getName();
-            String[] ns = name.split("\\.");
-            if (ns[1].equals("gif") || ns[1].equals("GIF")) {
+            if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".gif")) {
                 gifHandler = new GifHandler(file.getAbsolutePath());
                 int width = gifHandler.getWidth();
                 int height = gifHandler.getHeight();
-                backgroundBit = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-                int nextFrame = gifHandler.updateFrame(backgroundBit);
-                handlerB.sendEmptyMessageDelayed(1, nextFrame);
+                if (width > 0 && height > 0) {
+                    backgroundBit = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                    int nextFrame = gifHandler.updateFrame(backgroundBit);
+                    handlerB.sendEmptyMessageDelayed(1, nextFrame);
+                }
             } else {
                 backgroundBit = BitmapFactory.decodeFile(file.getPath());
                 assert mHeaderBackground != null;

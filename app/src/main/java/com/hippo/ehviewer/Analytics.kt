@@ -19,49 +19,60 @@ import android.content.Context
 import android.os.Bundle
 import android.text.TextUtils
 import android.util.Log
-import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.hippo.scene.SceneFragment
 import java.util.Locale
 
 /**
- * google监控
+ * google监控（反射兼容可选 Firebase，避免无 google-services.json 或低版本系统依赖冲突）
  */
 object Analytics {
     private const val LOG_TAG = "Analytics"
     private const val DEVICE_LANGUAGE = "device_language"
 
-    private var analytics: FirebaseAnalytics? = null
+    private var analyticsInstance: Any? = null
 
     @JvmStatic
     fun start(context: Context) {
-        analytics = FirebaseAnalytics.getInstance(context)
-        analytics!!.setUserId(Settings.getUserID())
+        try {
+            val faClass = Class.forName("com.google.firebase.analytics.FirebaseAnalytics")
+            val instance = faClass.getMethod("getInstance", Context::class.java).invoke(null, context)
+                ?: return
+            analyticsInstance = instance
+            faClass.getMethod("setUserId", String::class.java).invoke(instance, Settings.getUserID())
 
-        val locale = Locale.getDefault()
-        var language = locale.getLanguage()
-        if (TextUtils.isEmpty(language)) {
-            language = "none"
+            val locale = Locale.getDefault()
+            var language = locale.language
+            if (TextUtils.isEmpty(language)) {
+                language = "none"
+            }
+            val country = locale.country
+            if (!TextUtils.isEmpty(country)) {
+                language = "$language-$country"
+            }
+            language = language.lowercase(Locale.getDefault())
+            faClass.getMethod("setUserProperty", String::class.java, String::class.java)
+                .invoke(instance, DEVICE_LANGUAGE, language)
+        } catch (t: Throwable) {
+            Log.d(LOG_TAG, "FirebaseAnalytics unavailable, skipping init")
         }
-        val country = locale.getCountry()
-        if (!TextUtils.isEmpty(country)) {
-            language = language + "-" + country
-        }
-        language = language.lowercase(Locale.getDefault())
-        analytics!!.setUserProperty(DEVICE_LANGUAGE, language)
     }
 
     @JvmStatic
     val isEnabled: Boolean
-        get() = analytics != null && Settings.getEnableAnalytics()
+        get() = analyticsInstance != null && Settings.getEnableAnalytics()
 
     @JvmStatic
     fun onSceneView(scene: SceneFragment) {
+        val instance = analyticsInstance ?: return
         if (isEnabled) {
-            val bundle = Bundle()
-            bundle.putString("scene_simple_class", scene.javaClass.getSimpleName())
-            bundle.putString("scene_class", scene.javaClass.getName())
-            analytics!!.logEvent("scene_view", bundle)
+            try {
+                val bundle = Bundle()
+                bundle.putString("scene_simple_class", scene.javaClass.simpleName)
+                bundle.putString("scene_class", scene.javaClass.name)
+                instance.javaClass.getMethod("logEvent", String::class.java, Bundle::class.java)
+                    .invoke(instance, "scene_view", bundle)
+            } catch (_: Throwable) {
+            }
         }
     }
 
@@ -71,11 +82,11 @@ object Analytics {
 
         if (isEnabled) {
             try {
-                FirebaseCrashlytics.getInstance().recordException(e)
-            } catch (ex: Exception) {
-                // firebase not init or others?
-                // just throw original error
-                Log.e(LOG_TAG, "Firebase error: " + ex)
+                val fcClass = Class.forName("com.google.firebase.crashlytics.FirebaseCrashlytics")
+                val fc = fcClass.getMethod("getInstance").invoke(null)
+                fcClass.getMethod("recordException", Throwable::class.java).invoke(fc, e)
+            } catch (ex: Throwable) {
+                Log.d(LOG_TAG, "FirebaseCrashlytics skipped: $ex")
             }
         }
     }

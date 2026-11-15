@@ -309,7 +309,7 @@ public class CookieSignInScene extends SolidScene implements EditText.OnEditorAc
                 String cookieString = formatCookieForWebView(cookie);
                 cookieManager.setCookie(EhUrl.DOMAIN_FORUMS, cookieString);
             }
-            cookieManager.flush();
+            com.hippo.util.CookieManagerCompat.flush(getEHContext(), cookieManager);
         } catch (Throwable t) {
             Log.e(TAG, "CookieManager/WebView unavailable, OkHttp cookies still stored", t);
         }

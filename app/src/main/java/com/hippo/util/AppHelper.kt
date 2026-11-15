@@ -23,11 +23,14 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Build
 import android.text.TextUtils
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import com.hippo.ehviewer.R
 import java.lang.RuntimeException
 
@@ -131,20 +134,44 @@ class AppHelper {
         @JvmStatic
         fun checkVPN(context: Context): Boolean {
             val connectivityManager =
-                context.getSystemService<ConnectivityManager>(ConnectivityManager::class.java)
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                    ?: return true
 
-            val network = connectivityManager.activeNetwork
-            //don't know why always returns null:
-            val networkInfo = connectivityManager.getNetworkInfo(network)
-            val result =
-                networkInfo != null && networkInfo.getType() == ConnectivityManager.TYPE_VPN
-            if (result) {
+            val isVpn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Api23VpnHelper.isVpnActive(connectivityManager)
+            } else {
+                @Suppress("DEPRECATION")
+                val networkInfo = connectivityManager.getNetworkInfo(17) // TYPE_VPN = 17
+                @Suppress("DEPRECATION")
+                networkInfo != null && networkInfo.isConnectedOrConnecting
+            }
+            if (isVpn) {
                 try {
                     Toast.makeText(context, R.string.network_remind, Toast.LENGTH_LONG).show()
                 } catch (_: RuntimeException) {
                 }
             }
-            return !result
+            return !isVpn
+        }
+
+        @RequiresApi(Build.VERSION_CODES.M)
+        private object Api23VpnHelper {
+            fun isVpnActive(cm: ConnectivityManager): Boolean {
+                return try {
+                    val network = cm.activeNetwork ?: return false
+                    val caps = cm.getNetworkCapabilities(network)
+                    if (caps != null) {
+                        caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        val info = cm.getNetworkInfo(network)
+                        @Suppress("DEPRECATION")
+                        info != null && info.type == ConnectivityManager.TYPE_VPN
+                    }
+                } catch (_: Throwable) {
+                    false
+                }
+            }
         }
 
         @JvmStatic

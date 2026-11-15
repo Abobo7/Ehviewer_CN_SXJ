@@ -36,6 +36,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.annotation.IntDef
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import com.hippo.ehviewer.EhApplication
 import com.hippo.ehviewer.R
@@ -66,8 +67,8 @@ class DownloadService : Service(), DownloadManager.DownloadListener {
     // WakeLock 用于防止CPU被限制（针对后台下载优化）
     private var mWakeLock: PowerManager.WakeLock? = null
     
-    // 网络回调用于监听网络状态（针对小米系统优化）
-    private var mNetworkCallback: ConnectivityManager.NetworkCallback? = null
+    // 网络回调用于监听网络状态（针对小米系统优化，使用 Any? 避免 API 19 Dalvik 类校验加载 NetworkCallback）
+    private var mNetworkCallback: Any? = null
     private var mConnectivityManager: ConnectivityManager? = null
 
     private var CHANNEL_ID: String? = null
@@ -611,61 +612,70 @@ class DownloadService : Service(), DownloadManager.DownloadListener {
         if (!MiuiOptimizationHelper.needsMiuiOptimization()) {
             return
         }
-        
         try {
             mConnectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                mNetworkCallback = object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) {
-                        super.onAvailable(network)
-                        Log.d(TAG, "Network available: $network")
-                    }
-                    
-                    override fun onLost(network: Network) {
-                        super.onLost(network)
-                        Log.d(TAG, "Network lost: $network")
-                    }
-                    
-                    override fun onCapabilitiesChanged(
-                        network: Network,
-                        networkCapabilities: NetworkCapabilities
-                    ) {
-                        super.onCapabilitiesChanged(network, networkCapabilities)
-                        // 监听网络能力变化
-                        val isUnmetered = networkCapabilities.hasCapability(
-                            NetworkCapabilities.NET_CAPABILITY_NOT_METERED
-                        )
-                        Log.d(TAG, "Network capabilities changed, unmetered: $isUnmetered")
-                    }
-                }
-                
-                val networkRequest = NetworkRequest.Builder()
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                    .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                    .build()
-                
-                mConnectivityManager?.registerNetworkCallback(networkRequest, mNetworkCallback!!)
-                Log.i(TAG, "Network callback registered (MIUI optimization)")
+                mNetworkCallback = Api24NetworkHelper.register(mConnectivityManager!!)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize network callback", e)
         }
     }
-    
+
     /**
      * 释放网络回调
      */
     private fun releaseNetworkCallback() {
         try {
-            if (mNetworkCallback != null && mConnectivityManager != null) {
-                mConnectivityManager?.unregisterNetworkCallback(mNetworkCallback!!)
+            if (mNetworkCallback != null && mConnectivityManager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                Api24NetworkHelper.unregister(mConnectivityManager!!, mNetworkCallback!!)
                 mNetworkCallback = null
                 mConnectivityManager = null
-                Log.i(TAG, "Network callback unregistered")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to unregister network callback", e)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    private object Api24NetworkHelper {
+        fun register(cm: ConnectivityManager): Any {
+            val callback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    super.onAvailable(network)
+                    Log.d(TAG, "Network available: $network")
+                }
+
+                override fun onLost(network: Network) {
+                    super.onLost(network)
+                    Log.d(TAG, "Network lost: $network")
+                }
+
+                override fun onCapabilitiesChanged(
+                    network: Network,
+                    networkCapabilities: NetworkCapabilities
+                ) {
+                    super.onCapabilitiesChanged(network, networkCapabilities)
+                    val isUnmetered = networkCapabilities.hasCapability(
+                        NetworkCapabilities.NET_CAPABILITY_NOT_METERED
+                    )
+                    Log.d(TAG, "Network capabilities changed, unmetered: $isUnmetered")
+                }
+            }
+            val networkRequest = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                .build()
+            cm.registerNetworkCallback(networkRequest, callback)
+            Log.i(TAG, "Network callback registered (MIUI optimization)")
+            return callback
+        }
+
+        fun unregister(cm: ConnectivityManager, callbackObj: Any) {
+            if (callbackObj is ConnectivityManager.NetworkCallback) {
+                cm.unregisterNetworkCallback(callbackObj)
+                Log.i(TAG, "Network callback unregistered")
+            }
         }
     }
 

@@ -60,10 +60,7 @@ public class SetSecurityActivity extends ToolbarActivity implements View.OnClick
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            FingerprintManager fingerprintManager = getSystemService(FingerprintManager.class);
-            // The line below prevents the false positive inspection from Android Studio
-            // noinspection ResourceType
-            if (fingerprintManager != null && hasEnrolledFingerprints(fingerprintManager)) {
+            if (Api23Impl.canUseFingerprint(this)) {
                 mFingerprint.setVisibility(View.VISIBLE);
                 mFingerprint.setChecked(Settings.getEnableFingerprint());
             }
@@ -73,13 +70,32 @@ public class SetSecurityActivity extends ToolbarActivity implements View.OnClick
         mSet.setOnClickListener(this);
     }
 
+    public static boolean hasEnrolledFingerprintsObj(Object managerObj) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Api23Impl.hasEnrolledFingerprints(managerObj);
+        }
+        return false;
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.M)
-    public static boolean hasEnrolledFingerprints(FingerprintManager fingerprintManager) {
-        try {
-            return fingerprintManager.isHardwareDetected()
-                && fingerprintManager.hasEnrolledFingerprints();
-        } catch (Throwable e) {
-            return false;
+    private static final class Api23Impl {
+        static boolean canUseFingerprint(SetSecurityActivity activity) {
+            FingerprintManager fm = activity.getSystemService(FingerprintManager.class);
+            return hasEnrolledFingerprints(fm);
+        }
+
+        @SuppressWarnings("MissingPermission")
+        static boolean hasEnrolledFingerprints(Object managerObj) {
+            if (!(managerObj instanceof FingerprintManager)) {
+                return false;
+            }
+            FingerprintManager fingerprintManager = (FingerprintManager) managerObj;
+            try {
+                return fingerprintManager.isHardwareDetected()
+                        && fingerprintManager.hasEnrolledFingerprints();
+            } catch (Throwable e) {
+                return false;
+            }
         }
     }
 

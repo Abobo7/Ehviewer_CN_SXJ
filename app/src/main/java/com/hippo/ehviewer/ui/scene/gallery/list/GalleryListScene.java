@@ -701,7 +701,7 @@ public final class GalleryListScene extends BaseScene
         mFabLayout.setOnExpandListener(this);
         addAboveSnackView(mFabLayout);
 
-        mActionFabDrawable = new AddDeleteDrawable(context, resources.getColor(R.color.primary_drawable_dark, null));
+        mActionFabDrawable = new AddDeleteDrawable(context, androidx.core.content.ContextCompat.getColor(context, R.color.primary_drawable_dark));
         mFabLayout.getPrimaryFab().setImageDrawable(mActionFabDrawable);
 
         mSearchFab.setOnClickListener(this);

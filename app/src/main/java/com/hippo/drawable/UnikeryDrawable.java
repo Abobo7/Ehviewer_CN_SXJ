@@ -16,8 +16,7 @@
 
 package com.hippo.drawable;
 
-import android.graphics.drawable.AnimatedImageDrawable;
-import android.graphics.drawable.AnimationDrawable;
+import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.util.Log;
@@ -152,12 +151,8 @@ public class UnikeryDrawable extends WrapDrawable implements Unikery<Image>,
 
         setDrawable(drawable);
         mImage = value;
-        if (Build.VERSION.SDK_INT>= Build.VERSION_CODES.P){
-            if (drawable instanceof AnimatedImageDrawable animatedImageDrawable)
-                animatedImageDrawable.start();
-        }else {
-            if (drawable instanceof AnimationDrawable animationDrawable)
-                animationDrawable.start();
+        if (drawable instanceof Animatable animatable) {
+            animatable.start();
         }
 
 

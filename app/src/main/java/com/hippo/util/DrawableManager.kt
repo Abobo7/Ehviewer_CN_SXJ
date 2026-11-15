@@ -17,24 +17,28 @@ package com.hippo.util
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import android.os.Build
 import androidx.annotation.DrawableRes
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.res.ResourcesCompat
+import androidx.vectordrawable.graphics.drawable.VectorDrawableCompat
 
 object DrawableManager {
-    //    public static Drawable getVectorDrawable(@NonNull Context context, @DrawableRes int resId) {
-    //        return getVectorDrawable(context.getResources(), resId, context.getTheme());
-    //    }
-    //
-    //    public static Drawable getVectorDrawable(@NonNull Resources res,
-    //            @DrawableRes int resId, @Nullable Resources.Theme theme) {
-    //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-    //            return res.getDrawable(resId, theme);
-    //        } else {
-    //            return VectorDrawableCompat.create(res, resId, theme);
-    //        }
-    //    }
     @JvmStatic
     fun getVectorDrawable(context: Context, @DrawableRes resId: Int): Drawable? {
-        return ResourcesCompat.getDrawable(context.getResources(), resId, context.getTheme())
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                ResourcesCompat.getDrawable(context.resources, resId, context.theme)
+            } else {
+                VectorDrawableCompat.create(context.resources, resId, context.theme)
+                    ?: AppCompatResources.getDrawable(context, resId)
+            }
+        } catch (_: Throwable) {
+            try {
+                AppCompatResources.getDrawable(context, resId)
+            } catch (_: Throwable) {
+                null
+            }
+        }
     }
 }

@@ -84,7 +84,10 @@ public abstract class DialogPreference extends Preference implements
             // (the one that is seen in the list)
             mDialogTitle = getTitle();
         }
-        mDialogIcon = a.getDrawable(R.styleable.DialogPreference_dialogIcon);
+        int iconResId = a.getResourceId(R.styleable.DialogPreference_dialogIcon, 0);
+        if (iconResId != 0) {
+            mDialogIcon = com.hippo.util.DrawableManager.getVectorDrawable(context, iconResId);
+        }
         mPositiveButtonText = a.getString(R.styleable.DialogPreference_positiveButtonText);
         mNegativeButtonText = a.getString(R.styleable.DialogPreference_negativeButtonText);
         mDialogLayoutResId = a.getResourceId(R.styleable.DialogPreference_dialogLayout, mDialogLayoutResId);
@@ -132,7 +135,7 @@ public abstract class DialogPreference extends Preference implements
      * @param dialogIconRes The icon, as a resource ID.
      */
     public void setDialogIcon(@DrawableRes int dialogIconRes) {
-        mDialogIcon = ContextCompat.getDrawable(getContext(), dialogIconRes);
+        mDialogIcon = com.hippo.util.DrawableManager.getVectorDrawable(getContext(), dialogIconRes);
     }
 
     /**

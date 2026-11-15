@@ -555,13 +555,13 @@ public class DownloadsScene extends ToolbarScene
         mFabLayout.setAutoCancel(false);
         mFabLayout.setOnClickFabListener(this);
         mFabLayout.setOnExpandListener(this);
-        mActionFabDrawable = new AddDeleteDrawable(context, resources.getColor(R.color.primary_drawable_dark, null));
+        mActionFabDrawable = new AddDeleteDrawable(context, androidx.core.content.ContextCompat.getColor(context, R.color.primary_drawable_dark));
         mFabLayout.getPrimaryFab().setImageDrawable(mActionFabDrawable);
         FloatingActionButton fab = mFabLayout.getSecondaryFabAt(6);
         if (DRAG_ENABLE) {
-            fab.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.v_mobile_hand_left_x24, context.getTheme()));
+            fab.setImageDrawable(DrawableManager.getVectorDrawable(context, R.drawable.v_mobile_hand_left_x24));
         } else {
-            fab.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.v_mobile_hand_left_off_x24, context.getTheme()));
+            fab.setImageDrawable(DrawableManager.getVectorDrawable(context, R.drawable.v_mobile_hand_left_off_x24));
         }
         addAboveSnackView(mFabLayout);
     }

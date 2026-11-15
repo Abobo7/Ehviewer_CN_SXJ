@@ -41,6 +41,7 @@ class ArchiverDownloadProgress : LinearLayout {
         init(context)
     }
 
+    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.LOLLIPOP)
     constructor(
         context: Context,
         attrs: AttributeSet?,

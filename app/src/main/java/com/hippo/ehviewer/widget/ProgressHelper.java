@@ -42,7 +42,7 @@ public class ProgressHelper {
             tvText = new TextView(context);
             progressMessage = message;
             tvText.setText(progressMessage);
-            tvText.setTextColor(context.getColor(R.color.primary_drawable_light));
+            tvText.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.primary_drawable_light));
             tvText.setTextSize(20);
             tvText.setLayoutParams(llParam);
 

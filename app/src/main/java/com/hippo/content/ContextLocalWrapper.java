@@ -16,16 +16,15 @@
 
 package com.hippo.content;
 
-/*
- * Created by Hippo on 2018/3/27.
- */
-
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.LocaleList;
+
+import androidx.annotation.RequiresApi;
+
 import java.util.Locale;
 
 public class ContextLocalWrapper extends ContextWrapper {
@@ -34,28 +33,34 @@ public class ContextLocalWrapper extends ContextWrapper {
     super(base);
   }
 
+  @SuppressWarnings("deprecation")
   public static ContextLocalWrapper wrap(Context context, Locale newLocale) {
     Resources res = context.getResources();
     Configuration configuration = res.getConfiguration();
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      configuration.setLocale(newLocale);
-
-      LocaleList localeList = new LocaleList(newLocale);
-      LocaleList.setDefault(localeList);
-      configuration.setLocales(localeList);
-
-      context = context.createConfigurationContext(configuration);
-
-    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+      context = Api24LocaleHelper.wrap(context, configuration, newLocale);
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
       configuration.setLocale(newLocale);
       context = context.createConfigurationContext(configuration);
-
     } else {
-      configuration.locale = newLocale;
+      // On KitKat (API 19), updateConfiguration in-place preserves Activity theme & MIUI LayoutInflater
+      configuration.setLocale(newLocale);
+      Locale.setDefault(newLocale);
       res.updateConfiguration(configuration, res.getDisplayMetrics());
     }
 
     return new ContextLocalWrapper(context);
+  }
+
+  @RequiresApi(Build.VERSION_CODES.N)
+  private static final class Api24LocaleHelper {
+    static Context wrap(Context context, Configuration configuration, Locale newLocale) {
+      configuration.setLocale(newLocale);
+      LocaleList localeList = new LocaleList(newLocale);
+      LocaleList.setDefault(localeList);
+      configuration.setLocales(localeList);
+      return context.createConfigurationContext(configuration);
+    }
   }
 }

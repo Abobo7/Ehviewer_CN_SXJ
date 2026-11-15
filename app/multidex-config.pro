@@ -1,0 +1,16 @@
+-keep class androidx.multidex.** { *; }
+-keep class com.hippo.ehviewer.EhApplication { *; }
+-keep class com.hippo.ehviewer.EhApplication$* { *; }
+-keep class com.hippo.content.RecordingApplication { *; }
+-keep class com.hippo.scene.SceneApplication { *; }
+-keep class com.hippo.ehviewer.Crash { *; }
+-keep class com.hippo.ehviewer.Settings { *; }
+-keep class com.hippo.lib.yorozuya.IntIdGenerator { *; }
+-keep class com.hippo.network.KitKatTlsHelper { *; }
+-keep class com.hippo.Native { *; }
+-keep class com.hippo.lib.image.Image { *; }
+-keep class com.hippo.lib.image.Image1 { *; }
+-keep class com.hippo.ehviewer.ui.EhActivity { *; }
+-keep class com.hippo.scene.StageActivity { *; }
+-keep class com.hippo.ehviewer.ui.splash.SplashActivity { *; }
+-keep class com.hippo.ehviewer.ui.MainActivity { *; }

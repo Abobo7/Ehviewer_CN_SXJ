@@ -21,10 +21,13 @@
 #ifdef IMAGE_SUPPORT_WEBP
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "patch_head_input_stream.h"
 #include "../utils.h"
 #include "webp/decode.h"
+#include "webp/demux.h"
 
 #define IMAGE_WEBP_DECODER_DESCRIPTION \
   ("libwebp " MAKESTRING(STRINGIZE, WEBP_DECODER_ABI_VERSION))
@@ -41,9 +44,12 @@ typedef struct {
   bool is_opaque;
   unsigned int frame_count;
   unsigned int current_frame;
+  int prev_timestamp;
+  int current_delay;
   unsigned char* buffer;
-  unsigned char** frames;
-  int* delays;
+  uint8_t* anim_data;
+  size_t anim_size;
+  WebPAnimDecoder* decoder;
 } WEBP;
 
 void* WEBP_decode(JNIEnv* env, PatchHeadInputStream* patch_head_input_stream, bool partially);
@@ -65,4 +71,3 @@ void WEBP_recycle(JNIEnv* env, WEBP* webp);
 #endif // IMAGE_SUPPORT_WEBP
 
 #endif // IMAGE_IMAGE_WEBP_H
-

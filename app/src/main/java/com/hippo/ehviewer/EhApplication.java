@@ -37,6 +37,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.collection.LruCache;
 
 import com.hippo.Native;
@@ -62,11 +63,13 @@ import com.hippo.lib.image.Image;
 import com.hippo.network.EhSSLSocketFactory;
 import com.hippo.network.EhSSLSocketFactoryLowSDK;
 import com.hippo.network.EhX509TrustManager;
+import com.hippo.network.KitKatTlsHelper;
 import com.hippo.network.StatusCodeException;
 import com.hippo.text.Html;
 import com.hippo.unifile.UniFile;
 import com.hippo.util.AppHelper;
 import com.hippo.util.BitmapUtils;
+import com.hippo.util.CookieManagerCompat;
 import com.hippo.util.ExceptionUtils;
 import com.hippo.util.IoThreadPoolExecutor;
 import com.hippo.util.ReadableTime;
@@ -170,6 +173,10 @@ public class EhApplication extends RecordingApplication {
         });
 
         super.onCreate();
+        AppCompatDelegate.setCompatVectorFromResourcesEnabled(true);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            KitKatTlsHelper.install();
+        }
 //        if(BuildConfig.DEBUG){
 //            TooLargeTool.startLogging(this);
 //        }
@@ -187,7 +194,7 @@ public class EhApplication extends RecordingApplication {
         BitmapUtils.initialize(this);
 //        Image1.initialize(this);
         Image.initialize(this);
-        Native.initialize();
+        Native.initialize(this);
         // 实际作用不确定，但是与64位应用有冲突
 //        A7Zip.loadLibrary(A7ZipExtractLite.LIBRARY, libname -> ReLinker.loadLibrary(EhApplication.this, libname));
         // 64位适配
@@ -420,7 +427,7 @@ public class EhApplication extends RecordingApplication {
                                 for (String header : response.headers("Set-Cookie")) {
                                     cookieManager.setCookie(url, header);
                                 }
-                                cookieManager.flush();
+                                CookieManagerCompat.flush(application, cookieManager);
                             } catch (Throwable t) {
                                 Log.e(TAG, "CookieManager/WebView sync skipped", t);
                             }
@@ -428,7 +435,10 @@ public class EhApplication extends RecordingApplication {
                         return response;
                     })
                     .proxySelector(getEhProxySelector(application));
-            if (Settings.getDF() && AppHelper.checkVPN(context)) {
+            boolean enableDf = Settings.getDF() && AppHelper.checkVPN(context);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                KitKatTlsHelper.applyToOkHttpBuilder(builder, enableDf);
+            } else if (enableDf) {
                 if (Build.VERSION.SDK_INT < 29) {
                     Security.insertProviderAt(Conscrypt.newProvider(), 1);
                     builder.connectionSpecs(Collections.singletonList(ConnectionSpec.MODERN_TLS));
@@ -495,7 +505,10 @@ public class EhApplication extends RecordingApplication {
                         }
                     })
                     .proxySelector(getEhProxySelector(application));
-            if (Settings.getDF() && AppHelper.checkVPN(context)) {
+            boolean enableImageDf = Settings.getDF() && AppHelper.checkVPN(context);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                KitKatTlsHelper.applyToOkHttpBuilder(builder, enableImageDf);
+            } else if (enableImageDf) {
                 if (Build.VERSION.SDK_INT < 29) {
                     Security.insertProviderAt(Conscrypt.newProvider(), 1);
                     builder.connectionSpecs(Collections.singletonList(ConnectionSpec.MODERN_TLS));

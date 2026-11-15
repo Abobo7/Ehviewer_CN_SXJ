@@ -82,7 +82,7 @@
             android:importantForAccessibility="no"
             android:visibility="invisible"
             android:layout_gravity="end"
-            android:src="@drawable/ic_start_play_24" />
+            app:srcCompat="@drawable/ic_start_play_24" />
 
         <com.hippo.ehviewer.widget.SeekBarPanel
             android:id="@+id/seek_bar_panel"

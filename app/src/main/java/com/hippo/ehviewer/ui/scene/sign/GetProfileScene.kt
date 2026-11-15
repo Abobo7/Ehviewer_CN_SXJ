@@ -406,7 +406,7 @@ class GetProfileScene : SolidScene() {
                 for (cookie in cookies) {
                     cookieManager.setCookie(url, cookie)
                 }
-                cookieManager.flush()
+                com.hippo.util.CookieManagerCompat.flush(ehContext, cookieManager)
             }
         }
 
@@ -441,24 +441,14 @@ class GetProfileScene : SolidScene() {
                 responseHeaders[headerName] = okHttpResponse.header(headerName)
             }
 
-            // Create the WebResourceResponse
-            if (okHttpResponse.body() == null) {
-                return WebResourceResponse(
-                    mimeType,
-                    encoding,
-                    statusCode,
-                    reasonPhrase,
-                    responseHeaders,
-                    null
-                )
-            }
-            return WebResourceResponse(
+            // Create the WebResourceResponse (API 19 compatible via CookieManagerCompat)
+            return com.hippo.util.CookieManagerCompat.createWebResourceResponse(
                 mimeType,
                 encoding,
                 statusCode,
                 reasonPhrase,
                 responseHeaders,
-                okHttpResponse.body()!!.byteStream()
+                okHttpResponse.body()?.byteStream()
             )
         }
 

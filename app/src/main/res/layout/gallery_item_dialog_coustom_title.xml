@@ -20,7 +20,7 @@
         android:paddingTop="@dimen/title_text_top_padding"
         android:paddingRight="?attr/listPreferredItemPaddingRight"
         android:textAppearance="?android:attr/textAppearanceListItemSmall"
-        android:textColor="?android:attr/textColorAlertDialogListItem"
+        android:textColor="?attr/textColorAlertDialogListItem"
         android:textSize="@dimen/text_medium" />
 
     <LinearLayout

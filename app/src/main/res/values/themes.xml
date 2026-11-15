@@ -22,9 +22,7 @@
         <item name="colorPrimary">@color/colorPrimary</item>
 
         <item name="popupWindowStyle">@color/popupWindow_background_light</item>
-        <item name="android:navigationBarColor">@color/white</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="navigationBarSurfaceColor">@color/white</item>
         <item name="buttonStyle">@style/ThemeChangeButtonStyleLight</item>
 
         <item name="android:windowBackground">@color/white</item>
@@ -79,9 +77,7 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="AppTheme.NoActionBar.Translucent" parent="AppTheme">
-
-    </style>
+    <style name="AppTheme.NoActionBar.Translucent" />
 
     <!-- =============== -->
     <!-- Base Dark Theme -->
@@ -94,9 +90,7 @@
         <item name="actionBarStyle">@style/ActionBarStyle</item>
 
         <item name="popupWindowStyle">@color/popupWindow_background_dark</item>
-        <item name="android:navigationBarColor">@color/grey_850</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="navigationBarSurfaceColor">@color/grey_850</item>
         <item name="buttonStyle">@style/ThemeChangeButtonStyleDark</item>
 
         <item name="android:windowBackground">@color/grey_850</item>
@@ -160,9 +154,7 @@
         <item name="actionBarStyle">@style/ActionBarStyle</item>
 
         <item name="popupWindowStyle">@color/popupWindow_background_black</item>
-        <item name="android:navigationBarColor">@android:color/black</item>
-        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="navigationBarSurfaceColor">@android:color/black</item>
         <item name="buttonStyle">@style/ThemeChangeButtonStyleBlack</item>
 
         <item name="android:windowBackground">@android:color/black</item>
@@ -231,6 +223,7 @@
 
     <style name="AppTheme.Gallery" parent="AppTheme.Dark">
         <item name="gallerySliderBackgroundColor">@color/gallery_slider_background_dark</item>
+        <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
 <!--        <item name="android:windowFullscreen">true</item>-->
     </style>
@@ -248,10 +241,8 @@
     <style name="AppTheme.Settings.Black" parent="AppTheme.Black" />
 
     <style name="SplashTheme" parent="BaseTheme">
-        ==========
-        启动页属性
-        ==========
         <item name="android:windowBackground">@color/trans</item>
+        <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
     </style>

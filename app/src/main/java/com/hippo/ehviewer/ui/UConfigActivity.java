@@ -28,7 +28,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.webkit.CookieManager;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -50,6 +49,7 @@ import com.hippo.ehviewer.client.EhCookieStore;
 import com.hippo.ehviewer.client.EhRequestBuilder;
 import com.hippo.ehviewer.client.EhUrl;
 import com.hippo.ehviewer.widget.DialogWebChromeClient;
+import com.hippo.util.CookieManagerCompat;
 import com.hippo.widget.ProgressView;
 
 import java.io.IOException;
@@ -85,9 +85,7 @@ public class UConfigActivity extends ToolbarActivity {
         try {
             // http://stackoverflow.com/questions/32284642/how-to-handle-an-uncatched-exception
             CookieManager cookieManager = CookieManager.getInstance();
-            cookieManager.flush();
-            cookieManager.removeAllCookies(null);
-            cookieManager.removeSessionCookies(null);
+            CookieManagerCompat.clearAllCookies(this, cookieManager);
 
             // Copy cookies from okhttp cookie store to CookieManager
             url = EhUrl.getUConfigUrl();
@@ -284,11 +282,6 @@ public class UConfigActivity extends ToolbarActivity {
             }
 
             return builder.build();
-        }
-
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            return true;
         }
 
         @Override

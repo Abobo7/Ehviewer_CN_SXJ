@@ -107,7 +107,9 @@ static void read_frame(png_structp png_ptr, png_infop info_ptr, PNG_FRAME_INFO* 
 
   png_read_frame_head(png_ptr, info_ptr);
   png_get_next_frame_fcTL(png_ptr, info_ptr, &width, &height, &offset_x, &offset_y, &delay_num, &delay_den, &dop, &bop);
-
+  if (delay_den == 0) {
+    delay_den = 100;
+  }
   delay = 1000u * delay_num / delay_den;
 
   frame_info->width = width;

@@ -144,7 +144,7 @@ public class WiFiServerActivity extends ToolbarActivity implements AdapterView.O
     private boolean requestMyPermission() {
         int result = ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_WIFI_STATE);
         if (result != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_WIFI_STATE}, REQUEST_CODE);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_WIFI_STATE}, REQUEST_CODE);
             return false;
         }
         return true;
